@@ -6,6 +6,7 @@ const authRoutes = require('./routes/authRoutes');
 const viagemRoutes = require('./routes/viagemRoutes');
 const roteiroRoutes = require('./routes/roteiroRoutes');
 const atividadeRoutes = require('./routes/atividadeRoutes');
+const custoRoutes = require('./routes/custoRoutes');
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.use('/auth', authRoutes);
 app.use('/viagem', viagemRoutes);
 app.use('/roteiro', roteiroRoutes);
 app.use('/atividade', atividadeRoutes);
+app.use('/custo', custoRoutes);
 
 app.get('/', (req, res) => {
   res.json({ mensagem: 'Servidor EasyTrip funcionando!' });
