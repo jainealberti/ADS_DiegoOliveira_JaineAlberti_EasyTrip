@@ -38,9 +38,13 @@ export default function DetalhesViagem() {
     setSucesso('');
 
     try {
-      await api.post('/roteiro/gerar', { id_viagem: parseInt(id) });
-      setSucesso('Roteiro gerado com sucesso!');
-      carregarDados();
+      const res = await api.post('/roteiro/gerar', { id_viagem: parseInt(id) });
+      if (!res.data.roteiro) {
+        setErro(res.data.mensagem || 'Erro ao gerar roteiro.');
+      } else {
+        setSucesso(res.data.mensagem || 'Roteiro gerado com sucesso!');
+        carregarDados();
+      }
     } catch (err) {
       setErro(err.response?.data?.mensagem || 'Erro ao gerar roteiro.');
     } finally {

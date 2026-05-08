@@ -1,3 +1,30 @@
+const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function chamarGeminiComRetry(genAI, prompt, config) {
+  for (const modelName of GEMINI_MODELS) {
+    for (let t = 1; t <= 3; t++) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        return await model.generateContent({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: config,
+        });
+      } catch (err) {
+        if (err.message?.includes('404')) break;
+        if ((err.message?.includes('503') || err.message?.includes('429')) && t < 3) {
+          await sleep(3000 * t);
+          continue;
+        }
+        if (t === 3) break;
+        throw err;
+      }
+    }
+  }
+  throw new Error('Gemini indisponível');
+}
+
 const gerarPreferenciasPorCidade = async (req, res) => {
   const { cidade } = req.body;
 
@@ -12,21 +39,28 @@ const gerarPreferenciasPorCidade = async (req, res) => {
   try {
     const { GoogleGenerativeAI } = require('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    const prompt = `Retorne APENAS um JSON válido, sem markdown, sem blocos de código.\n\nGere 10 preferências/experiências de viagem específicas e contextualizadas para a cidade de ${cidade}. Cada preferência deve ser algo típico ou recomendado para quem visita essa cidade. Retorne JSON: { "preferencias": [ { "id": "slug_unico", "nome": "Nome curto" } ] }`;
+    const prompt = `Gere 10 preferências/experiências de viagem específicas para a cidade de ${cidade}. Cada preferência deve ser algo típico ou recomendado para visitantes dessa cidade. Retorne um JSON com a estrutura: { "preferencias": [ { "id": "slug_unico", "nome": "Nome curto" } ] }`;
 
-    const resultado = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.8, maxOutputTokens: 500 }
+    const resultado = await chamarGeminiComRetry(genAI, prompt, {
+      temperature: 0.7,
+      maxOutputTokens: 500,
+      responseMimeType: 'application/json',
     });
 
     const conteudo = resultado.response.text().trim();
-    const jsonLimpo = conteudo.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const dados = JSON.parse(jsonLimpo);
+
+    let dados;
+    try {
+      dados = JSON.parse(conteudo);
+    } catch {
+      const limpo = conteudo.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      dados = JSON.parse(limpo);
+    }
+
     res.json({ preferencias: dados.preferencias || [] });
   } catch (erro) {
-    console.error('Erro ao gerar preferências:', erro.message);
+    console.error('[IA] Erro ao gerar preferências:', erro.message);
     res.json({ preferencias: gerarPreferenciasFallback(cidade) });
   }
 };
@@ -62,7 +96,6 @@ const chatIA = async (req, res) => {
   try {
     const { GoogleGenerativeAI } = require('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     let systemMsg = 'Você é um assistente de viagens simpático e prestativo chamado EasyTrip. Responda em português do Brasil. Seja conciso mas informativo. Use emojis quando apropriado.';
 
@@ -73,14 +106,14 @@ const chatIA = async (req, res) => {
       systemMsg += ` Destino atual: ${contexto.destino}.`;
     }
 
-    const resultado = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: systemMsg + '\n\n' + mensagem }] }],
-      generationConfig: { temperature: 0.8, maxOutputTokens: 1000 }
+    const resultado = await chamarGeminiComRetry(genAI, systemMsg + '\n\n' + mensagem, {
+      temperature: 0.8,
+      maxOutputTokens: 1000,
     });
 
     res.json({ resposta: resultado.response.text().trim() });
   } catch (erro) {
-    console.error('Erro no chat IA:', erro.message);
+    console.error('[IA] Erro no chat:', erro.message);
     res.status(500).json({ mensagem: 'Erro ao processar mensagem.' });
   }
 };

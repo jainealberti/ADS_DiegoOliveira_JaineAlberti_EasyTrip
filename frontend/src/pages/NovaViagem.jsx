@@ -177,11 +177,19 @@ export default function NovaViagem() {
       });
 
       const idViagem = res.data.viagem.id_viagem;
-      setEtapa('Gerando roteiro personalizado com IA...');
+      setEtapa('Buscando lugares reais e gerando roteiro...');
       const roteiroRes = await api.post('/roteiro/gerar', { id_viagem: idViagem });
+      if (!roteiroRes.data.roteiro) {
+        setErro(roteiroRes.data.mensagem || 'Erro ao gerar roteiro.');
+        return;
+      }
       navigate(`/roteiros/${roteiroRes.data.roteiro.id_roteiro}`);
     } catch (err) {
-      setErro(err.response?.data?.mensagem || 'Erro ao criar viagem e gerar roteiro.');
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        setErro('A geração demorou mais que o esperado. Tente novamente.');
+      } else {
+        setErro(err.response?.data?.mensagem || 'Erro ao criar viagem e gerar roteiro. Verifique o console do servidor.');
+      }
     } finally {
       setCarregando(false);
       setEtapa('');
@@ -322,7 +330,7 @@ export default function NovaViagem() {
             <div className="loading-ia">
               <div className="spinner" />
               <p>{etapa}</p>
-              <small>Isso pode levar alguns segundos</small>
+              <small>Buscando dados reais via OpenStreetMap e Wikipedia. Isso pode levar até 30 segundos.</small>
             </div>
           )}
 
@@ -330,7 +338,7 @@ export default function NovaViagem() {
             <button type="button" className="btn btn-secondary" onClick={() => navigate('/dashboard')} disabled={carregando}>Cancelar</button>
             <button type="submit" className="btn btn-primary btn-gerar" disabled={carregando}>
               <FiCpu size={18} />
-              {carregando ? etapa : 'Criar e Gerar Roteiro'}
+              {carregando ? etapa : 'Criar Roteiro com Dados Reais'}
             </button>
           </div>
         </form>

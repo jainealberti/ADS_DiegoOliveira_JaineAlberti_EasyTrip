@@ -118,6 +118,14 @@ export default function DetalhesRoteiro() {
 
   useEffect(() => { carregarRoteiro(); }, [id]);
 
+  useEffect(() => {
+    if (dias.length > 0) {
+      const todosAbertos = {};
+      dias.forEach(d => { todosAbertos[d.dia] = true; });
+      setDiasAbertos(todosAbertos);
+    }
+  }, [dias.length]);
+
   async function carregarRoteiro() {
     try {
       const res = await api.get(`/roteiro/${id}`);
@@ -323,6 +331,7 @@ export default function DetalhesRoteiro() {
   const temCoordAproximada = pontosFiltrados.some(p => p.coordAproximada);
   const fontesInfo = metadados.fontes_dados || {};
   const totalLugaresEncontrados = metadados.total_lugares_encontrados || 0;
+  const totalLugaresValidados = metadados.total_lugares_validados || 0;
 
   let contadorGlobal = 0;
 
@@ -376,14 +385,31 @@ export default function DetalhesRoteiro() {
           </p>
           {totalLugaresEncontrados > 0 && (
             <div className="dados-reais-badge">
-              <span className="badge-real">Dados Reais</span>
+              <span className="badge-real">100% Dados Reais</span>
               <span className="badge-info">
-                {totalLugaresEncontrados} lugar(es) verificado(s)
-                {fontesInfo.atracoes && ` | Atrações: ${fontesInfo.atracoes}`}
-                {fontesInfo.restaurantes && ` | Restaurantes: ${fontesInfo.restaurantes}`}
+                {totalLugaresEncontrados} lugar(es) encontrado(s) | {totalLugaresValidados} validado(s)
+                {fontesInfo.lugares && ` | Fonte: ${fontesInfo.lugares}`}
+                {fontesInfo.rotas && ` | Rotas: ${fontesInfo.rotas}`}
               </span>
             </div>
           )}
+          {dias.length > 0 && (() => {
+            const custoTotal = dias.reduce((total, d) => total + d.atividades.reduce((acc, a) => acc + (parseFloat(a.custo_estimado) || 0), 0), 0);
+            const totalAtividades = dias.reduce((acc, d) => acc + d.atividades.length, 0);
+            const gratuitas = dias.reduce((acc, d) => acc + d.atividades.filter(a => parseFloat(a.custo_estimado) === 0).length, 0);
+            return (
+              <div className="resumo-custos" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.8rem', padding: '0.8rem 1rem', background: '#f0faf4', borderRadius: '10px', border: '1px solid #d4efdf' }}>
+                <span style={{ fontWeight: '600', color: '#27ae60', fontSize: '0.9rem' }}>💰 Custo total estimado: R$ {custoTotal.toFixed(2)}</span>
+                <span style={{ color: '#636e72', fontSize: '0.85rem' }}>| {totalAtividades} atividades</span>
+                <span style={{ color: '#636e72', fontSize: '0.85rem' }}>| {gratuitas} gratuitas</span>
+                {roteiro.orcamento && custoTotal > 0 && (
+                  <span style={{ color: custoTotal <= parseFloat(roteiro.orcamento) ? '#27ae60' : '#e74c3c', fontSize: '0.85rem', fontWeight: '500' }}>
+                    | {custoTotal <= parseFloat(roteiro.orcamento) ? '✅ Dentro do orçamento' : '⚠️ Acima do orçamento'}
+                  </span>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -396,14 +422,21 @@ export default function DetalhesRoteiro() {
           {infoCidadeAberta && (
             <div className="cidade-info-body">
               <div className="cidade-info-grid">
-                <div><strong>História</strong><p>{infoCidade.historia}</p></div>
-                <div><strong>Curiosidades</strong><p>{infoCidade.curiosidades}</p></div>
-                <div><strong>Clima</strong><p>{infoCidade.clima}</p></div>
+                <div><strong>Sobre a cidade</strong><p>{infoCidade.historia}</p></div>
+                {infoCidade.curiosidades && <div><strong>Curiosidades</strong><p>{infoCidade.curiosidades}</p></div>}
+                {infoCidade.clima && <div><strong>Clima</strong><p>{infoCidade.clima}</p></div>}
                 {infoCidade.populacao && <div><strong>População</strong><p>{infoCidade.populacao}</p></div>}
                 {infoCidade.principais_atracoes && <div><strong>Principais Atrações</strong><p>{infoCidade.principais_atracoes}</p></div>}
                 {infoCidade.gastronomia && <div><strong>Gastronomia</strong><p>{infoCidade.gastronomia}</p></div>}
                 {infoCidade.dica_geral && <div><strong>Dica</strong><p>{infoCidade.dica_geral}</p></div>}
               </div>
+              {infoCidade.wikipediaUrl && (
+                <p style={{ marginTop: '0.5rem', fontSize: '0.8rem' }}>
+                  <a href={infoCidade.wikipediaUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#3498db' }}>
+                    Saiba mais na Wikipedia
+                  </a>
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -494,7 +527,9 @@ export default function DetalhesRoteiro() {
                         </div>
                         {a.local && <p style={{ margin: '4px 0 2px', fontSize: '0.78rem', color: '#636e72' }}><FiMapPin size={10} /> {a.local}</p>}
                         {a.tempo_visita && <p style={{ margin: '2px 0', fontSize: '0.78rem', color: '#636e72' }}>Visita: {a.tempo_visita}</p>}
-                        {a.custo_estimado > 0 && <p style={{ margin: '2px 0', fontSize: '0.78rem', color: '#27ae60' }}>R$ {parseFloat(a.custo_estimado).toFixed(2)}</p>}
+                        <p style={{ margin: '2px 0', fontSize: '0.78rem', color: parseFloat(a.custo_estimado) > 0 ? '#27ae60' : '#7f8c8d', fontWeight: '500' }}>
+                          {parseFloat(a.custo_estimado) > 0 ? `💰 R$ ${parseFloat(a.custo_estimado).toFixed(2)}` : '✅ Gratuito'}
+                        </p>
                         {trecho && trecho.distanciaTexto && (
                           <p style={{ margin: '4px 0', fontSize: '0.78rem', color: '#2980b9', background: '#eaf2f8', padding: '3px 6px', borderRadius: '4px' }}>
                             Próximo: {trecho.distanciaTexto}{trecho.duracaoTexto ? ` - ${trecho.duracaoTexto}` : ''}
@@ -589,106 +624,112 @@ export default function DetalhesRoteiro() {
         )}
       </div>
 
-      {/* Accordion de dias */}
+      {/* Cards de dias */}
       <div className="accordion-controls">
         <button className="btn btn-sm btn-secondary" onClick={expandirTodos}>Expandir todos</button>
         <button className="btn btn-sm btn-secondary" onClick={recolherTodos}>Recolher todos</button>
       </div>
 
-      {dias.map(diaObj => {
-        const aberto = diasAbertos[diaObj.dia] || false;
-        const realizadasDia = diaObj.atividades.filter(a => a.realizada).length;
-        return (
-          <div key={diaObj.dia} className="accordion-item">
-            <div className="accordion-header" onClick={() => toggleDia(diaObj.dia)}>
-              <div className="accordion-title">
-                {aberto ? <FiChevronDown size={20} /> : <FiChevronRight size={20} />}
-                <h2>Dia {diaObj.dia}</h2>
-                <span className="accordion-badge">{realizadasDia}/{diaObj.atividades.length}</span>
-              </div>
-              <button className="btn btn-sm btn-primary" onClick={e => { e.stopPropagation(); iniciarNovaAtividade(diaObj.dia); }}><FiPlus /> Adicionar</button>
-            </div>
-            {aberto && (
-              <div className="accordion-body">
-                <div className="atividades-list">
-                  {diaObj.atividades.map(ativ => {
-                    contadorGlobal++;
-                    const numAtiv = contadorGlobal;
-                    const expandida = atividadeExpandida === ativ.id_atividade;
-                    return (
-                      <div key={ativ.id_atividade} className={`atividade-card ${ativ.realizada ? 'atividade-realizada' : ''}`}>
-                        {editando === ativ.id_atividade ? (
-                          <div className="atividade-edit">
-                            <input type="text" placeholder="Nome da atividade" value={formEdit.nome_atividade} onChange={e => setFormEdit({ ...formEdit, nome_atividade: e.target.value })} />
-                            <input type="text" placeholder="Descrição" value={formEdit.descricao} onChange={e => setFormEdit({ ...formEdit, descricao: e.target.value })} />
-                            <input type="text" placeholder="Local" value={formEdit.local} onChange={e => setFormEdit({ ...formEdit, local: e.target.value })} />
-                            <div className="edit-row">
-                              <input type="time" value={formEdit.horario} onChange={e => setFormEdit({ ...formEdit, horario: e.target.value })} />
-                              <input type="number" placeholder="Custo" value={formEdit.custo_estimado} onChange={e => setFormEdit({ ...formEdit, custo_estimado: parseFloat(e.target.value) || 0 })} step="0.01" />
-                            </div>
-                            <div className="edit-actions">
-                              <button className="btn btn-sm btn-primary" onClick={() => salvarEdicao(ativ.id_atividade)}><FiSave /> Salvar</button>
-                              <button className="btn btn-sm btn-secondary" onClick={() => setEditando(null)}><FiX /> Cancelar</button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <button className="checkbox-btn" onClick={() => toggleRealizada(ativ)} title={ativ.realizada ? 'Marcar como pendente' : 'Marcar como realizada'}>
-                              {ativ.realizada ? <FiCheckSquare size={22} className="check-done" /> : <FiSquare size={22} />}
-                            </button>
-                            <div className={`atividade-info ${ativ.realizada ? 'info-riscado' : ''}`}>
-                              <div className="atividade-header-row" onClick={() => toggleDetalheAtividade(ativ.id_atividade)}>
-                                <span className="ativ-numero" style={{ background: TIPO_CORES[ativ.tipo] || '#FF6B35' }}>{numAtiv}</span>
-                                <h4>{TIPO_EMOJI[ativ.tipo] || '📍'} {ativ.nome_atividade || 'Atividade'}</h4>
-                                {expandida ? <FiChevronDown size={16} /> : <FiChevronRight size={16} />}
-                              </div>
-                              <div className="atividade-meta">
-                                {ativ.horario && <span><FiClock /> {ativ.horario}</span>}
-                                {ativ.local && <span><FiMapPin /> {ativ.local}</span>}
-                                {ativ.custo_estimado > 0 && <span><FiDollarSign /> R$ {parseFloat(ativ.custo_estimado).toFixed(2)}</span>}
-                                {ativ.tempo_visita && <span>🕐 {ativ.tempo_visita}</span>}
-                                {ativ.deslocamento_proximo && <span className="deslocamento-badge">🚗 {ativ.deslocamento_proximo}</span>}
-                                {ativ.tipo && <span className="tag" style={{ background: TIPO_CORES[ativ.tipo] || '#FF6B35', color: '#fff' }}>{ativ.tipo.replace(/_/g, ' ')}</span>}
-                              </div>
-                              {expandida && ativ.descricao && (
-                                <div className="atividade-detalhes">
-                                  <p>{ativ.descricao}</p>
-                                </div>
-                              )}
-                            </div>
-                            <div className="atividade-actions">
-                              <button className="btn-icon" onClick={() => iniciarEdicao(ativ)} title="Editar"><FiEdit /></button>
-                              <button className="btn-icon btn-icon-danger" onClick={() => excluirAtividade(ativ.id_atividade)} title="Excluir"><FiTrash2 /></button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {novaAtividade && novaAtividade.dia === diaObj.dia && (
-                    <div className="atividade-card atividade-nova">
-                      <div className="atividade-edit">
-                        <input type="text" placeholder="Nome da atividade" value={novaAtividade.nome_atividade} onChange={e => setNovaAtividade({ ...novaAtividade, nome_atividade: e.target.value })} />
-                        <input type="text" placeholder="Descrição" value={novaAtividade.descricao} onChange={e => setNovaAtividade({ ...novaAtividade, descricao: e.target.value })} />
-                        <input type="text" placeholder="Local" value={novaAtividade.local} onChange={e => setNovaAtividade({ ...novaAtividade, local: e.target.value })} />
-                        <div className="edit-row">
-                          <input type="time" value={novaAtividade.horario} onChange={e => setNovaAtividade({ ...novaAtividade, horario: e.target.value })} />
-                          <input type="number" placeholder="Custo" value={novaAtividade.custo_estimado} onChange={e => setNovaAtividade({ ...novaAtividade, custo_estimado: parseFloat(e.target.value) || 0 })} step="0.01" />
-                        </div>
-                        <div className="edit-actions">
-                          <button className="btn btn-sm btn-primary" onClick={salvarNovaAtividade}><FiSave /> Salvar</button>
-                          <button className="btn btn-sm btn-secondary" onClick={() => setNovaAtividade(null)}><FiX /> Cancelar</button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {diaObj.atividades.length === 0 && !novaAtividade && <p className="empty-dia">Nenhuma atividade neste dia.</p>}
+      <div className="dias-grid">
+        {dias.map(diaObj => {
+          const aberto = diasAbertos[diaObj.dia] || false;
+          const realizadasDia = diaObj.atividades.filter(a => a.realizada).length;
+          const custoTotalDia = diaObj.atividades.reduce((acc, a) => acc + (parseFloat(a.custo_estimado) || 0), 0);
+          return (
+            <div key={diaObj.dia} className="accordion-item">
+              <div className="accordion-header" onClick={() => toggleDia(diaObj.dia)}>
+                <div className="accordion-title">
+                  {aberto ? <FiChevronDown size={20} /> : <FiChevronRight size={20} />}
+                  <h2>Dia {diaObj.dia}</h2>
+                  <span className="accordion-badge">{realizadasDia}/{diaObj.atividades.length}</span>
+                  {custoTotalDia > 0 && <span className="accordion-badge" style={{ background: '#27ae60', marginLeft: '0.4rem' }}>💰 R$ {custoTotalDia.toFixed(2)}</span>}
                 </div>
+                <button className="btn btn-sm btn-primary" onClick={e => { e.stopPropagation(); iniciarNovaAtividade(diaObj.dia); }}><FiPlus /> Adicionar</button>
               </div>
-            )}
-          </div>
-        );
-      })}
+              {aberto && (
+                <div className="accordion-body">
+                  <div className="atividades-list">
+                    {diaObj.atividades.map(ativ => {
+                      contadorGlobal++;
+                      const numAtiv = contadorGlobal;
+                      const expandida = atividadeExpandida === ativ.id_atividade;
+                      return (
+                        <div key={ativ.id_atividade} className={`atividade-card ${ativ.realizada ? 'atividade-realizada' : ''}`}>
+                          {editando === ativ.id_atividade ? (
+                            <div className="atividade-edit">
+                              <input type="text" placeholder="Nome da atividade" value={formEdit.nome_atividade} onChange={e => setFormEdit({ ...formEdit, nome_atividade: e.target.value })} />
+                              <input type="text" placeholder="Descrição" value={formEdit.descricao} onChange={e => setFormEdit({ ...formEdit, descricao: e.target.value })} />
+                              <input type="text" placeholder="Local" value={formEdit.local} onChange={e => setFormEdit({ ...formEdit, local: e.target.value })} />
+                              <div className="edit-row">
+                                <input type="time" value={formEdit.horario} onChange={e => setFormEdit({ ...formEdit, horario: e.target.value })} />
+                                <input type="number" placeholder="Custo" value={formEdit.custo_estimado} onChange={e => setFormEdit({ ...formEdit, custo_estimado: parseFloat(e.target.value) || 0 })} step="0.01" />
+                              </div>
+                              <div className="edit-actions">
+                                <button className="btn btn-sm btn-primary" onClick={() => salvarEdicao(ativ.id_atividade)}><FiSave /> Salvar</button>
+                                <button className="btn btn-sm btn-secondary" onClick={() => setEditando(null)}><FiX /> Cancelar</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <button className="checkbox-btn" onClick={() => toggleRealizada(ativ)} title={ativ.realizada ? 'Marcar como pendente' : 'Marcar como realizada'}>
+                                {ativ.realizada ? <FiCheckSquare size={22} className="check-done" /> : <FiSquare size={22} />}
+                              </button>
+                              <div className={`atividade-info ${ativ.realizada ? 'info-riscado' : ''}`}>
+                                <div className="atividade-header-row" onClick={() => toggleDetalheAtividade(ativ.id_atividade)}>
+                                  <span className="ativ-numero" style={{ background: TIPO_CORES[ativ.tipo] || '#FF6B35' }}>{numAtiv}</span>
+                                  <h4>{TIPO_EMOJI[ativ.tipo] || '📍'} {ativ.nome_atividade || 'Atividade'}</h4>
+                                  {expandida ? <FiChevronDown size={16} /> : <FiChevronRight size={16} />}
+                                </div>
+                                <div className="atividade-meta">
+                                  {ativ.horario && <span><FiClock /> {ativ.horario}</span>}
+                                  {ativ.local && <span><FiMapPin /> {ativ.local}</span>}
+                                  <span style={{ color: parseFloat(ativ.custo_estimado) > 0 ? '#27ae60' : '#7f8c8d' }}>
+                                    <FiDollarSign /> {parseFloat(ativ.custo_estimado) > 0 ? `R$ ${parseFloat(ativ.custo_estimado).toFixed(2)}` : 'Gratuito'}
+                                  </span>
+                                  {ativ.tempo_visita && <span>🕐 {ativ.tempo_visita}</span>}
+                                  {ativ.deslocamento_proximo && <span className="deslocamento-badge">🚗 {ativ.deslocamento_proximo}</span>}
+                                  {ativ.tipo && <span className="tag" style={{ background: TIPO_CORES[ativ.tipo] || '#FF6B35', color: '#fff' }}>{ativ.tipo.replace(/_/g, ' ')}</span>}
+                                </div>
+                                {expandida && ativ.descricao && (
+                                  <div className="atividade-detalhes">
+                                    <p>{ativ.descricao}</p>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="atividade-actions">
+                                <button className="btn-icon" onClick={() => iniciarEdicao(ativ)} title="Editar"><FiEdit /></button>
+                                <button className="btn-icon btn-icon-danger" onClick={() => excluirAtividade(ativ.id_atividade)} title="Excluir"><FiTrash2 /></button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {novaAtividade && novaAtividade.dia === diaObj.dia && (
+                      <div className="atividade-card atividade-nova">
+                        <div className="atividade-edit">
+                          <input type="text" placeholder="Nome da atividade" value={novaAtividade.nome_atividade} onChange={e => setNovaAtividade({ ...novaAtividade, nome_atividade: e.target.value })} />
+                          <input type="text" placeholder="Descrição" value={novaAtividade.descricao} onChange={e => setNovaAtividade({ ...novaAtividade, descricao: e.target.value })} />
+                          <input type="text" placeholder="Local" value={novaAtividade.local} onChange={e => setNovaAtividade({ ...novaAtividade, local: e.target.value })} />
+                          <div className="edit-row">
+                            <input type="time" value={novaAtividade.horario} onChange={e => setNovaAtividade({ ...novaAtividade, horario: e.target.value })} />
+                            <input type="number" placeholder="Custo" value={novaAtividade.custo_estimado} onChange={e => setNovaAtividade({ ...novaAtividade, custo_estimado: parseFloat(e.target.value) || 0 })} step="0.01" />
+                          </div>
+                          <div className="edit-actions">
+                            <button className="btn btn-sm btn-primary" onClick={salvarNovaAtividade}><FiSave /> Salvar</button>
+                            <button className="btn btn-sm btn-secondary" onClick={() => setNovaAtividade(null)}><FiX /> Cancelar</button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {diaObj.atividades.length === 0 && !novaAtividade && <p className="empty-dia">Nenhuma atividade neste dia.</p>}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
       {dias.length === 0 && <div className="empty-state-small"><p>Nenhuma atividade encontrada neste roteiro.</p></div>}
     </div>

@@ -14,6 +14,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use((req, res, next) => {
+  console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 app.use('/auth', authRoutes);
 app.use('/viagem', viagemRoutes);
 app.use('/roteiro', roteiroRoutes);
