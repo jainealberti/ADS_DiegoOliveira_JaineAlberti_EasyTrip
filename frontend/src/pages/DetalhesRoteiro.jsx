@@ -229,13 +229,9 @@ export default function DetalhesRoteiro() {
 
   const boundsPoints = useMemo(() => {
     const pts = pontosFiltrados.map(a => [a.latNum, a.lngNum]);
-    if (diaFiltroMapa === 0) {
-      const locaisProximos = metadados.locais_proximos || [];
-      locaisProximos.filter(l => coordenadaValida(l.lat, l.lng)).forEach(l => pts.push([parseFloat(l.lat), parseFloat(l.lng)]));
-    }
     if (pts.length === 0 && centroMapa) pts.push(centroMapa);
     return pts;
-  }, [pontosFiltrados, metadados.locais_proximos, centroMapa, diaFiltroMapa]);
+  }, [pontosFiltrados, centroMapa]);
 
   const tiposNoMapa = useMemo(() => {
     const tipos = new Set();
@@ -480,12 +476,6 @@ export default function DetalhesRoteiro() {
                 {TIPO_LABEL[tipo] || tipo}
               </span>
             ))}
-            {locaisProximos.length > 0 && diaFiltroMapa === 0 && (
-              <span className="mapa-legenda-item">
-                <span className="mapa-legenda-cor" style={{ background: '#fff', border: '2px solid #f39c12', color: '#f39c12' }}>*</span>
-                Locais Próximos
-              </span>
-            )}
           </div>
         )}
 
@@ -543,22 +533,6 @@ export default function DetalhesRoteiro() {
                 );
               })}
 
-              {diaFiltroMapa === 0 && locaisProximos.filter(l => coordenadaValida(l.lat, l.lng)).map((l, i) => (
-                <Marker key={`prox-${i}`} position={[parseFloat(l.lat), parseFloat(l.lng)]} icon={criarIconeProximo(l.tipo)}>
-                  <Popup maxWidth={260}>
-                    <div style={{ minWidth: '180px' }}>
-                      <strong>{l.nome}</strong>
-                      <br /><small>{TIPO_LABEL[l.tipo] || l.tipo} - {l.distancia}</small>
-                      {l.descricao && <><br /><small>{l.descricao}</small></>}
-                      {l.dica && <><br /><small style={{ color: '#FF6B35' }}>{l.dica}</small></>}
-                      <br />
-                      <button onClick={() => abrirSeletorDia(l)} style={{ marginTop: '6px', padding: '5px 12px', background: '#FF6B35', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, width: '100%' }}>
-                        + Adicionar ao roteiro
-                      </button>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
 
               {rotaGeometria.length > 1 && (
                 <Polyline positions={rotaGeometria} pathOptions={{ color: '#FF6B35', weight: 4, opacity: 0.7, dashArray: '10, 6' }} />
@@ -572,27 +546,6 @@ export default function DetalhesRoteiro() {
           </div>
         )}
 
-        {locaisProximos.length > 0 && (
-          <div className="locais-proximos">
-            <h4><FiNavigation /> Locais próximos para explorar</h4>
-            <div className="locais-grid">
-              {locaisProximos.map((l, i) => (
-                <div key={i} className="local-card">
-                  <div className="local-info">
-                    <strong>{TIPO_EMOJI[l.tipo] || '*'} {l.nome}</strong>
-                    <span className="tag" style={{ background: TIPO_CORES[l.tipo] || '#f39c12', color: '#fff' }}>{TIPO_LABEL[l.tipo] || l.tipo}</span>
-                    <small>{l.distancia}</small>
-                    <p>{l.descricao}</p>
-                    {l.dica && <p className="local-dica">{l.dica}</p>}
-                  </div>
-                  <button className="btn btn-sm btn-primary" onClick={() => abrirSeletorDia(l)}>
-                    <FiPlus /> Adicionar
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Painel info viagem */}
@@ -732,6 +685,28 @@ export default function DetalhesRoteiro() {
       </div>
 
       {dias.length === 0 && <div className="empty-state-small"><p>Nenhuma atividade encontrada neste roteiro.</p></div>}
+
+      {locaisProximos.length > 0 && (
+        <div className="locais-proximos">
+          <h4><FiNavigation /> Locais próximos para explorar</h4>
+          <div className="locais-grid">
+            {locaisProximos.map((l, i) => (
+              <div key={i} className="local-card">
+                <div className="local-info">
+                  <strong>{TIPO_EMOJI[l.tipo] || '*'} {l.nome}</strong>
+                  <span className="tag" style={{ background: TIPO_CORES[l.tipo] || '#f39c12', color: '#fff' }}>{TIPO_LABEL[l.tipo] || l.tipo}</span>
+                  <small>{l.distancia}</small>
+                  <p>{l.descricao}</p>
+                  {l.dica && <p className="local-dica">{l.dica}</p>}
+                </div>
+                <button className="btn btn-sm btn-primary" onClick={() => abrirSeletorDia(l)}>
+                  <FiPlus /> Adicionar
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

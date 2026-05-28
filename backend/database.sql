@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS custo (
     categoria VARCHAR(100),
     descricao VARCHAR(255),
     valor DECIMAL(10,2) NOT NULL,
+    foto_despesa VARCHAR(500),
     id_viagem INTEGER NOT NULL REFERENCES viagem(id_viagem) ON DELETE CASCADE,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -86,3 +87,4 @@ CREATE INDEX IF NOT EXISTS idx_custo_viagem ON custo(id_viagem);
 -- ALTER TABLE atividade ADD COLUMN IF NOT EXISTS tipo VARCHAR(50);
 -- ALTER TABLE atividade ADD COLUMN IF NOT EXISTS tempo_visita VARCHAR(50);
 -- ALTER TABLE atividade ADD COLUMN IF NOT EXISTS deslocamento_proximo VARCHAR(100);
+-- ALTER TABLE custo ADD COLUMN IF NOT EXISTS foto_despesa VARCHAR(500);

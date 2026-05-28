@@ -1,15 +1,17 @@
 const pool = require('../config/db');
+const fs = require('fs');
+const path = require('path');
 
 const adicionarCusto = async (req, res) => {
   const { id_viagem, categoria, descricao, valor } = req.body;
   const id_usuario = req.usuario.id;
+  const foto_despesa = req.file ? `/uploads/despesas/${req.file.filename}` : null;
 
   try {
     if (!id_viagem || !valor) {
       return res.status(400).json({ mensagem: 'ID da viagem e valor são obrigatórios!' });
     }
 
-    // Verifica se a viagem pertence ao usuário
     const viagem = await pool.query(
       'SELECT id_viagem FROM viagem WHERE id_viagem = $1 AND fk_usuario_id_usuario = $2',
       [id_viagem, id_usuario]
@@ -20,9 +22,9 @@ const adicionarCusto = async (req, res) => {
     }
 
     const resultado = await pool.query(
-      `INSERT INTO custo (id_viagem, categoria, descricao, valor)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [id_viagem, categoria || 'Outros', descricao || null, valor]
+      `INSERT INTO custo (id_viagem, categoria, descricao, valor, foto_despesa)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [id_viagem, categoria || 'Outros', descricao || null, valor, foto_despesa]
     );
 
     res.status(201).json({
@@ -40,7 +42,6 @@ const listarCustos = async (req, res) => {
   const id_usuario = req.usuario.id;
 
   try {
-    // Verifica se a viagem pertence ao usuário
     const viagem = await pool.query(
       'SELECT id_viagem FROM viagem WHERE id_viagem = $1 AND fk_usuario_id_usuario = $2',
       [id_viagem, id_usuario]
@@ -93,9 +94,8 @@ const excluirCusto = async (req, res) => {
   const id_usuario = req.usuario.id;
 
   try {
-    // Verifica se o custo pertence a uma viagem do usuário
     const custo = await pool.query(
-      `SELECT c.id_custo FROM custo c
+      `SELECT c.id_custo, c.foto_despesa FROM custo c
        JOIN viagem v ON c.id_viagem = v.id_viagem
        WHERE c.id_custo = $1 AND v.fk_usuario_id_usuario = $2`,
       [id_custo, id_usuario]
@@ -103,6 +103,16 @@ const excluirCusto = async (req, res) => {
 
     if (custo.rows.length === 0) {
       return res.status(404).json({ mensagem: 'Custo não encontrado.' });
+    }
+
+    const fotoDespesa = custo.rows[0].foto_despesa;
+    if (fotoDespesa) {
+      const caminhoArquivo = path.join(__dirname, '..', '..', fotoDespesa);
+      fs.unlink(caminhoArquivo, (err) => {
+        if (err && err.code !== 'ENOENT') {
+          console.error('Erro ao remover foto da despesa:', err);
+        }
+      });
     }
 
     await pool.query('DELETE FROM custo WHERE id_custo = $1', [id_custo]);

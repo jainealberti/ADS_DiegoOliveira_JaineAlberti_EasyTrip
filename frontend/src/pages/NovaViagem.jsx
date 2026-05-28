@@ -177,7 +177,7 @@ export default function NovaViagem() {
       });
 
       const idViagem = res.data.viagem.id_viagem;
-      setEtapa('Buscando lugares reais e gerando roteiro...');
+      setEtapa('Buscando lugares e gerando roteiro...');
       const roteiroRes = await api.post('/roteiro/gerar', { id_viagem: idViagem });
       if (!roteiroRes.data.roteiro) {
         setErro(roteiroRes.data.mensagem || 'Erro ao gerar roteiro.');
@@ -330,7 +330,7 @@ export default function NovaViagem() {
             <div className="loading-ia">
               <div className="spinner" />
               <p>{etapa}</p>
-              <small>Buscando dados reais via OpenStreetMap e Wikipedia. Isso pode levar até 30 segundos.</small>
+              <small>Criando o Roteriro ideal para sua viagem!. Isso pode levar alguns segundos.</small>
             </div>
           )}
 
@@ -338,7 +338,7 @@ export default function NovaViagem() {
             <button type="button" className="btn btn-secondary" onClick={() => navigate('/dashboard')} disabled={carregando}>Cancelar</button>
             <button type="submit" className="btn btn-primary btn-gerar" disabled={carregando}>
               <FiCpu size={18} />
-              {carregando ? etapa : 'Criar Roteiro com Dados Reais'}
+              {carregando ? etapa : 'Gerar Roteiro com IA'}
             </button>
           </div>
         </form>
