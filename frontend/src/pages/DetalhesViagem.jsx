@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
-import { FiMapPin, FiCalendar, FiDollarSign, FiTrash2, FiEdit, FiCpu, FiList, FiArrowLeft } from 'react-icons/fi';
+import { FiMapPin, FiCalendar, FiTrash2, FiEdit, FiCpu, FiList, FiArrowLeft } from 'react-icons/fi';
 
 export default function DetalhesViagem() {
   const { id } = useParams();
@@ -95,7 +95,7 @@ export default function DetalhesViagem() {
             <FiArrowLeft /> Voltar
           </button>
           <Link to={`/viagens/${id}/custos`} className="btn btn-secondary">
-            <FiDollarSign /> Custos
+            <span style={{ fontWeight: 'bold', fontSize: '1.1em' }}>R$</span> Inserir Custos da Viagem!
           </Link>
           <button onClick={excluirViagem} className="btn btn-danger">
             <FiTrash2 /> Excluir

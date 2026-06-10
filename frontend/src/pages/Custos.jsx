@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { FiDollarSign, FiPlus, FiTrash2, FiArrowLeft, FiCamera, FiX, FiImage } from 'react-icons/fi';
 
-const API_BASE = 'http://localhost:3001';
+const API_BASE = `http://${window.location.hostname}:3001`;
 
 export default function Custos() {
   const { id } = useParams();

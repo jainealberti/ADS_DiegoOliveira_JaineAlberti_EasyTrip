@@ -1905,13 +1905,21 @@ a {
     flex-direction: column;
   }
 
+  .page-header h1 {
+    font-size: 1.2rem;
+  }
+
   .header-actions {
     width: 100%;
+    flex-wrap: wrap;
   }
 
   .header-actions .btn {
     flex: 1;
     justify-content: center;
+    font-size: 0.8rem;
+    padding: 0.5rem 0.8rem;
+    min-width: 0;
   }
 
   .cards-grid {
@@ -1923,7 +1931,25 @@ a {
   }
 
   .navbar {
-    padding: 0 1rem;
+    flex-wrap: wrap;
+    height: auto;
+    padding: 0.5rem 1rem;
+    gap: 0.3rem;
+  }
+
+  .navbar-user span {
+    display: none;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+  }
+
+  .section-header .btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .edit-row {
@@ -1932,6 +1958,11 @@ a {
 
   .custos-table {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .custos-table table {
+    min-width: 500px;
   }
 
   .foto-thumb {
@@ -1965,8 +1996,30 @@ a {
     gap: 0.4rem;
   }
 
+  .roteiro-info-display {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .accordion-header {
     padding: 0.8rem 1rem;
+  }
+
+  .accordion-body {
+    padding: 0.6rem 0.8rem 0.8rem;
+  }
+
+  .atividade-card {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .atividade-actions {
+    align-self: flex-end;
+  }
+
+  .hero-content {
+    padding: 2rem 1.2rem;
   }
 
   .hero-content h1 {
@@ -1977,6 +2030,10 @@ a {
     font-size: 1rem;
   }
 
+  .hero-desc {
+    font-size: 0.85rem;
+  }
+
   .features-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 0.8rem;
@@ -1984,6 +2041,10 @@ a {
 
   .feature-card {
     padding: 1rem;
+  }
+
+  .feature-card p {
+    font-size: 0.75rem;
   }
 
   .navbar-links {
@@ -2002,6 +2063,10 @@ a {
     max-width: 90%;
   }
 
+  .chat-input-bar {
+    padding: 0.8rem;
+  }
+
   .cidade-info-grid {
     grid-template-columns: 1fr;
   }
@@ -2017,4 +2082,78 @@ a {
   .welcome-banner {
     padding: 1rem;
   }
+
+  .custo-total-card {
+    padding: 1rem 1.2rem;
+  }
+
+  .valor-total {
+    font-size: 1.8rem;
+  }
+
+  .form-card {
+    padding: 1.2rem;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .mapa-container-leaflet {
+    height: 300px;
+  }
+
+  .modal-content {
+    width: 95%;
+    padding: 1.2rem;
+  }
+
+  .rota-resumo {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
 }
+
+@media (max-width: 480px) {
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-content h1 {
+    font-size: 1.3rem;
+  }
+
+  .hero-tagline {
+    font-size: 0.9rem;
+  }
+
+  .btn-hero {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .header-actions .btn {
+    flex-basis: 100%;
+  }
+
+  .mapa-container-leaflet {
+    height: 250px;
+  }
+
+  .accordion-title h2 {
+    font-size: 0.95rem;
+  }
+
+  .chat-msg-bubble {
+    font-size: 0.85rem;
+    padding: 0.6rem 0.8rem;
+  }
+}
+
+/* Landing page styles are now inline in HomePage.jsx */

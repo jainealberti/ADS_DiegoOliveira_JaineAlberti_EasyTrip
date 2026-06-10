@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import {
   FiMapPin, FiCalendar, FiDollarSign, FiCpu, FiHeart,
@@ -47,7 +47,9 @@ const PREFERENCIAS_FALLBACK = [
 ];
 
 export default function NovaViagem() {
-  const [destino, setDestino] = useState('');
+  const [searchParams] = useSearchParams();
+  const destinoParam = searchParams.get('destino') || '';
+  const [destino, setDestino] = useState(destinoParam);
   const [sugestoes, setSugestoes] = useState([]);
   const [mostrarSugestoes, setMostrarSugestoes] = useState(false);
   const [dataInicio, setDataInicio] = useState('');
