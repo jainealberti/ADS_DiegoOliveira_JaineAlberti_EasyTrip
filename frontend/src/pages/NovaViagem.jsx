@@ -24,6 +24,51 @@ const CIDADES_POPULARES = [
   'Praga, República Tcheca', 'Viena, Áustria', 'Budapeste, Hungria'
 ];
 
+const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
+
+function formatarResultadoNominatim(item) {
+  const addr = item.address || {};
+  const cidade = addr.city || addr.town || addr.village || addr.hamlet || item.name || '';
+  const estado = addr.state || '';
+  const pais = addr.country || '';
+
+  if (estado && pais) return `${cidade}, ${estado}, ${pais}`;
+  if (pais) return `${cidade}, ${pais}`;
+  return cidade;
+}
+
+async function buscarCidadesNominatim(query) {
+  try {
+    const url = `${NOMINATIM_URL}?q=${encodeURIComponent(query)}&format=json&limit=6&addressdetails=1&accept-language=pt-BR`;
+    const resp = await fetch(url, {
+      headers: { 'User-Agent': 'EasyTrip/1.0 (travel-planner-academic)' }
+    });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+
+    const tiposValidos = ['city', 'town', 'village', 'hamlet', 'municipality', 'administrative'];
+    const filtrados = data.filter(item => {
+      const tipo = (item.type || '').toLowerCase();
+      const classe = (item.class || '').toLowerCase();
+      return tiposValidos.some(t => tipo.includes(t)) || classe === 'place' || classe === 'boundary';
+    });
+
+    const pool = filtrados.length > 0 ? filtrados : data;
+    const vistos = new Set();
+    const resultados = [];
+    for (const item of pool) {
+      const nome = formatarResultadoNominatim(item);
+      if (!vistos.has(nome.toLowerCase())) {
+        vistos.add(nome.toLowerCase());
+        resultados.push(nome);
+      }
+    }
+    return resultados.slice(0, 6);
+  } catch {
+    return [];
+  }
+}
+
 const TRANSPORTES = [
   { id: 'aviao', nome: 'Avião', emoji: '✈️' },
   { id: 'onibus', nome: 'Ônibus', emoji: '🚌' },
@@ -111,17 +156,37 @@ export default function NovaViagem() {
     }
   }, []);
 
+  const nominatimDebounceRef = useRef(null);
+
   function handleDestinoChange(valor) {
     setDestino(valor);
 
     if (valor.length >= 2) {
       const filtradas = CIDADES_POPULARES.filter((c) =>
         c.toLowerCase().includes(valor.toLowerCase())
-      ).slice(0, 8);
+      ).slice(0, 4);
       setSugestoes(filtradas);
       setMostrarSugestoes(filtradas.length > 0);
     } else {
+      setSugestoes([]);
       setMostrarSugestoes(false);
+    }
+
+    if (nominatimDebounceRef.current) clearTimeout(nominatimDebounceRef.current);
+
+    if (valor.length >= 3) {
+      nominatimDebounceRef.current = setTimeout(async () => {
+        const nominatimResults = await buscarCidadesNominatim(valor);
+        if (nominatimResults.length > 0) {
+          setSugestoes(prev => {
+            const locais = prev.filter(s => !nominatimResults.some(n => n.toLowerCase() === s.toLowerCase()));
+            const combinadas = [...locais, ...nominatimResults];
+            const unicas = [...new Set(combinadas.map(c => c))].slice(0, 8);
+            setMostrarSugestoes(unicas.length > 0);
+            return unicas;
+          });
+        }
+      }, 400);
     }
 
     if (debounceRef.current) clearTimeout(debounceRef.current);

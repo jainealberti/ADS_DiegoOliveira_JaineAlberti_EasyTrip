@@ -1,28 +1,43 @@
-const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+const GEMINI_MODELS = [
+  'gemini-3.5-flash',
+  'gemini-2.5-flash',
+  'gemini-2.5-pro',
+];
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function chamarGeminiComRetry(genAI, prompt, config) {
+  let ultimoErro = null;
   for (const modelName of GEMINI_MODELS) {
     for (let t = 1; t <= 3; t++) {
       try {
         const model = genAI.getGenerativeModel({ model: modelName });
-        return await model.generateContent({
+        const resultado = await model.generateContent({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: config,
         });
+        return resultado;
       } catch (err) {
-        if (err.message?.includes('404')) break;
+        ultimoErro = err;
+        console.error(`[Gemini] Modelo "${modelName}" tentativa ${t}/3 falhou: ${err.message || err}`);
+        if (err.message?.includes('404') || err.message?.includes('not found')) break;
+        if (err.message?.includes('API_KEY_INVALID') || err.message?.includes('PERMISSION_DENIED')) {
+          throw new Error(`Chave Gemini inválida ou sem permissão: ${err.message}`);
+        }
+        if (err.message?.includes('quota') || err.message?.includes('RESOURCE_EXHAUSTED')) {
+          throw new Error(`429 - Cota excedida: ${err.message.substring(0, 200)}`);
+        }
         if ((err.message?.includes('503') || err.message?.includes('429')) && t < 3) {
           await sleep(3000 * t);
           continue;
         }
         if (t === 3) break;
-        throw err;
+        await sleep(1000);
       }
     }
   }
-  throw new Error('Gemini indisponível');
+  const detalhe = ultimoErro?.message || 'Nenhum modelo respondeu';
+  throw new Error(`Gemini indisponível — ${detalhe}`);
 }
 
 const gerarPreferenciasPorCidade = async (req, res) => {
@@ -81,7 +96,8 @@ function gerarPreferenciasFallback(cidade) {
 }
 
 const chatIA = async (req, res) => {
-  const { mensagem, contexto } = req.body;
+  const { mensagem, contexto, historico } = req.body;
+  const id_usuario = req.usuario.id;
 
   if (!mensagem) {
     return res.status(400).json({ mensagem: 'Mensagem é obrigatória.' });
@@ -95,26 +111,112 @@ const chatIA = async (req, res) => {
 
   try {
     const { GoogleGenerativeAI } = require('@google/generative-ai');
+    const pool = require('../config/db');
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-    let systemMsg = 'Você é um assistente de viagens simpático e prestativo chamado EasyTrip. Responda em português do Brasil. Seja conciso mas informativo. Use emojis quando apropriado.';
+    const viagens = await pool.query(
+      `SELECT v.id_viagem, v.destino, v.quantidade_dias, v.orcamento, v.meio_transporte, v.nome_preferencia
+       FROM viagem v WHERE v.fk_usuario_id_usuario = $1 ORDER BY v.data_criacao DESC LIMIT 5`,
+      [id_usuario]
+    );
+
+    let dadosRoteiros = '';
+    if (viagens.rows.length > 0) {
+      for (const v of viagens.rows) {
+        const roteiros = await pool.query(
+          `SELECT r.id_roteiro, r.titulo, r.descricao FROM roteiro r WHERE r.fk_viagem_id_viagem = $1 ORDER BY r.data_criacao DESC LIMIT 1`,
+          [v.id_viagem]
+        );
+        if (roteiros.rows.length > 0) {
+          const rot = roteiros.rows[0];
+          const atividades = await pool.query(
+            `SELECT nome_atividade, descricao, local, dia, horario, custo_estimado, tipo FROM atividade WHERE fk_roteiro_id_roteiro = $1 ORDER BY dia ASC, horario ASC`,
+            [rot.id_roteiro]
+          );
+
+          dadosRoteiros += `\n\n--- VIAGEM: ${v.destino} (${v.quantidade_dias} dias) ---`;
+          if (v.orcamento) dadosRoteiros += `\nOrçamento: R$ ${v.orcamento}`;
+          if (v.meio_transporte) dadosRoteiros += `\nTransporte: ${v.meio_transporte}`;
+          if (v.nome_preferencia) dadosRoteiros += `\nPreferências: ${v.nome_preferencia}`;
+          dadosRoteiros += `\nRoteiro: ${rot.titulo}`;
+
+          if (atividades.rows.length > 0) {
+            const porDia = {};
+            atividades.rows.forEach(a => {
+              const d = a.dia || 1;
+              if (!porDia[d]) porDia[d] = [];
+              porDia[d].push(a);
+            });
+
+            Object.keys(porDia).sort((a, b) => a - b).forEach(dia => {
+              dadosRoteiros += `\n  Dia ${dia}:`;
+              porDia[dia].forEach(a => {
+                dadosRoteiros += `\n    - ${a.horario || '??:??'} | ${a.nome_atividade}${a.local ? ' (' + a.local + ')' : ''}${a.custo_estimado > 0 ? ' | R$ ' + parseFloat(a.custo_estimado).toFixed(2) : ' | Gratuito'}`;
+                if (a.descricao) dadosRoteiros += ` — ${a.descricao.substring(0, 80)}`;
+              });
+            });
+          }
+        }
+      }
+    }
+
+    let systemMsg = `Você é um assistente de viagens simpático e prestativo chamado EasyTrip. Responda em português do Brasil. Use emojis quando apropriado.
+
+REGRAS:
+- Quando o usuário pedir para ver/mostrar o roteiro, apresente os dados REAIS do roteiro dele de forma organizada e bonita.
+- Formate o roteiro com dia, horário, nome do local, descrição curta e custo.
+- Se o usuário perguntar sobre uma viagem específica, use os dados reais abaixo.
+- Seja preciso com os dados — não invente atividades que não estão no roteiro.
+- Se o usuário não tiver roteiros, informe que ele precisa criar uma viagem primeiro e gerar o roteiro.`;
 
     if (contexto?.cidade) {
-      systemMsg += ` O usuário está planejando ou viajando para ${contexto.cidade}.`;
+      systemMsg += `\n\nCidade de contexto atual: ${contexto.cidade}.`;
     }
     if (contexto?.destino) {
-      systemMsg += ` Destino atual: ${contexto.destino}.`;
+      systemMsg += `\nDestino atual: ${contexto.destino}.`;
     }
 
-    const resultado = await chamarGeminiComRetry(genAI, systemMsg + '\n\n' + mensagem, {
-      temperature: 0.8,
-      maxOutputTokens: 1000,
+    if (dadosRoteiros) {
+      systemMsg += `\n\n===== DADOS REAIS DAS VIAGENS E ROTEIROS DO USUÁRIO =====`;
+      systemMsg += dadosRoteiros;
+      systemMsg += `\n\n===== FIM DOS DADOS =====`;
+    } else {
+      systemMsg += `\n\nO usuário ainda não possui viagens ou roteiros cadastrados.`;
+    }
+
+    let conversaCompleta = systemMsg + '\n\n';
+    if (historico && historico.length > 0) {
+      const historicoRecente = historico.slice(-10);
+      historicoRecente.forEach(msg => {
+        conversaCompleta += `${msg.role === 'user' ? 'Usuário' : 'Assistente'}: ${msg.content}\n`;
+      });
+    }
+    conversaCompleta += `Usuário: ${mensagem}\nAssistente:`;
+
+    const resultado = await chamarGeminiComRetry(genAI, conversaCompleta, {
+      temperature: 0.7,
+      maxOutputTokens: 2000,
     });
 
     res.json({ resposta: resultado.response.text().trim() });
   } catch (erro) {
     console.error('[IA] Erro no chat:', erro.message);
-    res.status(500).json({ mensagem: 'Erro ao processar mensagem.' });
+
+    if (erro.message?.includes('429') || erro.message?.includes('quota') || erro.message?.includes('RESOURCE_EXHAUSTED')) {
+      return res.json({
+        resposta: '⚠️ A cota diária da IA foi excedida. O plano gratuito do Gemini tem um limite de requisições por dia.\n\nVocê pode:\n- Aguardar até amanhã para a cota ser renovada\n- Ou acessar https://ai.google.dev para verificar o status da sua cota\n\nEnquanto isso, você ainda pode navegar pelas suas viagens e roteiros normalmente!'
+      });
+    }
+
+    if (erro.message?.includes('API_KEY_INVALID') || erro.message?.includes('PERMISSION_DENIED')) {
+      return res.json({
+        resposta: '⚠️ A chave da API de IA está inválida ou sem permissão. Verifique a configuração da GEMINI_API_KEY no servidor.'
+      });
+    }
+
+    res.json({
+      resposta: '😕 Desculpe, a IA está temporariamente indisponível. Tente novamente em alguns instantes.'
+    });
   }
 };
 
@@ -143,11 +245,9 @@ async function gerarExploracaoFallback(destino) {
 
   const headerImage = await buscarImagemCidade(destino);
 
-  const [locaisComImagem, jantarComImagem, experienciasComImagem] = await Promise.all([
-    buscarImagensParaLista(locais, destino, 'local'),
-    buscarImagensParaLista(restaurantes, destino, 'restaurante'),
-    buscarImagensParaLista(experiencias, destino, 'local'),
-  ]);
+  const locaisComImagem = await buscarImagensParaLista(locais, destino, 'local', headerImage);
+  const jantarComImagem = await buscarImagensParaLista(restaurantes, destino, 'restaurante', headerImage, locaisComImagem);
+  const experienciasComImagem = await buscarImagensParaLista(experiencias, destino, 'local', headerImage, locaisComImagem, jantarComImagem);
 
   return {
     destino: destino,
@@ -193,21 +293,31 @@ const explorarDestino = async (req, res) => {
     const { buscarImagemCidade, buscarImagensParaLista } = require('../services/imageService');
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-    const prompt = `Você é um guia de viagens especialista. O usuário quer explorar: "${destinoLimpo}".
+    const prompt = `Você é um guia de viagens especialista com conhecimento real e verificável. O usuário quer explorar: "${destinoLimpo}".
 
 REGRAS OBRIGATÓRIAS:
 - Responda em português do Brasil.
 - Use APENAS informações reais e verificáveis. NUNCA invente nomes de lugares, restaurantes ou experiências.
 - Todos os locais, restaurantes e experiências DEVEM ser reais, existentes e verificáveis no Google Maps.
-- O campo "palavraChaveImagem" deve conter o NOME EXATO do local/restaurante seguido do nome da cidade (ex: "Cristo Redentor Rio de Janeiro", "Mercado Público Porto Alegre"), para facilitar a busca de fotos reais.
-- Para restaurantes: use o nome REAL e COMPLETO do restaurante (ex: "Barranco Restaurante Porto Alegre").
+- Para cidades brasileiras, SEMPRE inclua o estado no campo "destino" (ex: "Cunha, São Paulo", "Monte Sião, Minas Gerais", "Pirenópolis, Goiás").
+- Para cidades internacionais, inclua o país (ex: "Hallstatt, Áustria").
+- O campo "palavraChaveImagem" deve conter o NOME OFICIAL do local como apareceria na Wikipedia (ex: "Cristo Redentor", "Mercado Público de Porto Alegre", "Parque Ibirapuera", "Catedral da Sé"). Para locais menos conhecidos, adicione a cidade (ex: "Praça da Matriz Cunha").
+- Para restaurantes: use o nome REAL e COMPLETO do restaurante. Se a cidade for pequena e você não tiver certeza de nomes reais de restaurantes, use estabelecimentos da região que você tenha certeza que existem.
 - Descrições devem ter no máximo 15 palavras cada.
+
+REGRAS PARA CIDADES PEQUENAS OU POUCO CONHECIDAS:
+- Se a cidade for pequena, rural ou pouco conhecida, NÃO invente locais ou restaurantes fictícios.
+- É MELHOR retornar menos itens (2-3) com informações reais do que 5-6 itens inventados.
+- Para cidades pequenas, priorize: praças centrais, igrejas históricas, cachoeiras, mirantes, restaurantes na praça central, pousadas com restaurante — locais que realmente existem em cidades pequenas brasileiras.
+- Se você não tem certeza se um local existe, NÃO inclua. Prefira listar atrações naturais da região (serras, cachoeiras, rios) que são verificáveis.
+- No campo "avisoConfiabilidade", se a cidade for pequena/pouco turística, inclua: "Cidade de menor porte turístico — recomendamos confirmar os locais antes da viagem."
 
 Retorne JSON com esta estrutura exata:
 {
-  "destino": "Nome completo da cidade",
+  "destino": "Nome completo da cidade, Estado/País",
   "pais": "País onde a cidade está localizada",
-  "resumo": "3-4 frases descritivas sobre o destino, sua história e atrativos principais.",
+  "estado": "Estado/província (se aplicável)",
+  "resumo": "3-4 frases descritivas sobre o destino, sua história e atrativos principais. Seja preciso e factual.",
   "melhorEpoca": "Período recomendado e motivo.",
   "clima": "Temperatura média e tipo de clima predominante.",
   "diasRecomendados": "X a Y dias",
@@ -215,9 +325,9 @@ Retorne JSON com esta estrutura exata:
     {
       "nome": "Nome real e completo do local",
       "descricao": "Descrição em até 15 palavras",
-      "categoria": "monumento | museu | parque | praia | mirante | centro histórico",
+      "categoria": "monumento | museu | parque | praia | mirante | centro histórico | igreja | cachoeira | praça",
       "avaliacao": 4.7,
-      "palavraChaveImagem": "Nome Exato do Local Nome da Cidade"
+      "palavraChaveImagem": "Nome Oficial do Local (como na Wikipedia)"
     }
   ],
   "ondeJantar": [
@@ -226,7 +336,7 @@ Retorne JSON com esta estrutura exata:
       "descricao": "Descrição curta",
       "tipoCozinha": "Tipo de cozinha",
       "faixaPreco": "$$ | $$$ | $$$$",
-      "palavraChaveImagem": "Nome Exato do Restaurante Nome da Cidade"
+      "palavraChaveImagem": "Nome Oficial do Restaurante Cidade"
     }
   ],
   "experiencias": [
@@ -234,17 +344,16 @@ Retorne JSON com esta estrutura exata:
       "nome": "Nome da experiência",
       "descricao": "Descrição curta",
       "tipo": "aventura | cultural | gastronômica | natureza | passeio",
-      "palavraChaveImagem": "Local Principal da Experiência Nome da Cidade"
+      "palavraChaveImagem": "Local Principal da Experiência (como na Wikipedia)"
     }
   ],
   "dicas": ["Dica prática e útil"],
   "avisoConfiabilidade": ""
 }
 
-Quantidades:
-- locaisParaVisitar: 5 a 6 itens
-- ondeJantar: 3 a 4 itens
-- experiencias: 3 a 4 itens
+Quantidades (AJUSTE conforme a cidade):
+- Cidades grandes/turísticas: locaisParaVisitar: 5-6, ondeJantar: 3-4, experiencias: 3-4
+- Cidades pequenas/pouco conhecidas: locaisParaVisitar: 2-4, ondeJantar: 2-3, experiencias: 2-3
 - dicas: 3 a 5 itens
 - avaliacao deve ser um número entre 3.0 e 5.0 com uma casa decimal`;
 
@@ -273,11 +382,9 @@ Quantidades:
 
     const headerImage = await buscarImagemCidade(cidadeNome);
 
-    const [locaisComImagem, jantarComImagem, experienciasComImagem] = await Promise.all([
-      buscarImagensParaLista(dados.locaisParaVisitar || [], cidadeNome, 'local'),
-      buscarImagensParaLista(dados.ondeJantar || [], cidadeNome, 'restaurante'),
-      buscarImagensParaLista(dados.experiencias || [], cidadeNome, 'local'),
-    ]);
+    const locaisComImagem = await buscarImagensParaLista(dados.locaisParaVisitar || [], cidadeNome, 'local', headerImage);
+    const jantarComImagem = await buscarImagensParaLista(dados.ondeJantar || [], cidadeNome, 'restaurante', headerImage, locaisComImagem);
+    const experienciasComImagem = await buscarImagensParaLista(dados.experiencias || [], cidadeNome, 'local', headerImage, locaisComImagem, jantarComImagem);
 
     res.json({
       destino: cidadeNome,

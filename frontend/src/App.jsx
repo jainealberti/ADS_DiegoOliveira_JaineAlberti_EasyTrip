@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import NovaViagem from './pages/NovaViagem';
 import DetalhesViagem from './pages/DetalhesViagem';
 import DetalhesRoteiro from './pages/DetalhesRoteiro';
+import RoteiroPublico from './pages/RoteiroPublico';
 import Custos from './pages/Custos';
 import ChatIA from './pages/ChatIA';
 
@@ -28,6 +29,7 @@ function AppLayout() {
         <Route path="/viagens/:id" element={<RotaPrivada><DetalhesViagem /></RotaPrivada>} />
         <Route path="/viagens/:id/custos" element={<RotaPrivada><Custos /></RotaPrivada>} />
         <Route path="/roteiros/:id" element={<RotaPrivada><DetalhesRoteiro /></RotaPrivada>} />
+        <Route path="/roteiro/publico/:share_token" element={<RoteiroPublico />} />
         <Route path="/chat" element={<RotaPrivada><ChatIA /></RotaPrivada>} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

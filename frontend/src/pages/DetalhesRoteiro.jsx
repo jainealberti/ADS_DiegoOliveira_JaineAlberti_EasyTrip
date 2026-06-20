@@ -6,7 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import {
   FiEdit, FiTrash2, FiPlus, FiClock, FiMapPin,
   FiDollarSign, FiSave, FiX, FiChevronDown, FiChevronRight,
-  FiCheckSquare, FiSquare, FiArrowLeft, FiHome, FiInfo, FiNavigation
+  FiCheckSquare, FiSquare, FiArrowLeft, FiHome, FiInfo, FiNavigation,
+  FiDownload, FiShare2, FiCopy, FiExternalLink
 } from 'react-icons/fi';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -115,6 +116,10 @@ export default function DetalhesRoteiro() {
   const [mapaCarregando, setMapaCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
+  const [gerandoPDF, setGerandoPDF] = useState(false);
+  const [compartilhando, setCompartilhando] = useState(false);
+  const [modalCompartilhar, setModalCompartilhar] = useState(null);
+  const [linkCopiado, setLinkCopiado] = useState(false);
 
   useEffect(() => { carregarRoteiro(); }, [id]);
 
@@ -317,6 +322,63 @@ export default function DetalhesRoteiro() {
     } catch { setErro('Erro ao adicionar local.'); }
   }
 
+  async function baixarPDF() {
+    setGerandoPDF(true);
+    try {
+      const res = await api.get(`/roteiro/${id}/pdf`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      const destino = roteiro?.destino?.toLowerCase().replace(/\s+/g, '-') || 'roteiro';
+      link.href = url;
+      link.setAttribute('download', `easytrip-roteiro-${destino}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setSucesso('PDF baixado com sucesso!');
+      setTimeout(() => setSucesso(''), 3000);
+    } catch {
+      setErro('Não foi possível gerar o PDF. Tente novamente.');
+      setTimeout(() => setErro(''), 4000);
+    } finally {
+      setGerandoPDF(false);
+    }
+  }
+
+  async function compartilharRoteiro() {
+    setCompartilhando(true);
+    try {
+      const res = await api.post(`/roteiro/${id}/compartilhar`);
+      const baseUrl = `${window.location.protocol}//${window.location.host}`;
+      const fullLink = `${baseUrl}/roteiro/publico/${res.data.share_token}`;
+      setModalCompartilhar({ link: fullLink, token: res.data.share_token });
+    } catch {
+      setErro('Erro ao compartilhar roteiro. Tente novamente.');
+      setTimeout(() => setErro(''), 4000);
+    } finally {
+      setCompartilhando(false);
+    }
+  }
+
+  async function desativarCompartilhamento() {
+    try {
+      await api.patch(`/roteiro/${id}/desativar-compartilhamento`);
+      setModalCompartilhar(null);
+      setSucesso('Compartilhamento desativado!');
+      setTimeout(() => setSucesso(''), 3000);
+    } catch {
+      setErro('Erro ao desativar compartilhamento.');
+      setTimeout(() => setErro(''), 4000);
+    }
+  }
+
+  function copiarLink() {
+    if (!modalCompartilhar) return;
+    navigator.clipboard.writeText(modalCompartilhar.link);
+    setLinkCopiado(true);
+    setTimeout(() => setLinkCopiado(false), 2500);
+  }
+
   if (carregando) return <div className="loading"><div className="spinner" /></div>;
   if (!roteiro) return <div className="container"><p>Roteiro não encontrado.</p></div>;
 
@@ -344,8 +406,42 @@ export default function DetalhesRoteiro() {
         </div>
       </div>
 
+      <div className="roteiro-action-bar">
+        <button className="btn btn-primary" onClick={baixarPDF} disabled={gerandoPDF}>
+          <FiDownload /> {gerandoPDF ? 'Gerando PDF...' : 'Baixar PDF'}
+        </button>
+        <button className="btn btn-primary" onClick={compartilharRoteiro} disabled={compartilhando} style={{ background: '#2d3436' }}>
+          <FiShare2 /> {compartilhando ? 'Compartilhando...' : 'Compartilhar roteiro'}
+        </button>
+      </div>
+
       {erro && <div className="alert alert-erro">{erro}</div>}
       {sucesso && <div className="alert alert-sucesso">{sucesso}</div>}
+
+      {modalCompartilhar && (
+        <div className="modal-overlay" onClick={() => setModalCompartilhar(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
+            <h3 style={{ marginBottom: '0.8rem' }}><FiShare2 /> Roteiro compartilhado!</h3>
+            <p style={{ color: '#636e72', fontSize: '0.9rem', marginBottom: '1rem' }}>
+              Qualquer pessoa com o link abaixo pode visualizar este roteiro (somente leitura).
+            </p>
+            <div style={{ background: '#f5f6fa', borderRadius: 10, padding: '0.8rem 1rem', marginBottom: '1rem', wordBreak: 'break-all', fontSize: '0.85rem', color: '#2d3436', border: '1px solid #dfe6e9' }}>
+              {modalCompartilhar.link}
+            </div>
+            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <button className="btn btn-primary" onClick={copiarLink}>
+                <FiCopy /> {linkCopiado ? 'Link copiado!' : 'Copiar link'}
+              </button>
+              <button className="btn btn-secondary" onClick={() => window.open(modalCompartilhar.link, '_blank')}>
+                <FiExternalLink /> Abrir roteiro público
+              </button>
+              <button className="btn btn-danger btn-sm" onClick={desativarCompartilhamento} style={{ marginLeft: 'auto' }}>
+                Desativar link
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {localParaAdicionar && (
         <div className="modal-overlay" onClick={() => setLocalParaAdicionar(null)}>

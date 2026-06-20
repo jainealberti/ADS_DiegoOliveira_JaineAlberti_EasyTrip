@@ -16,6 +16,13 @@ async function gerarRoteiroCompleto(viagem) {
     console.log('[Itinerary] Etapa 1/8: Resolvendo cidade...');
     resultado.etapas.push('resolver_cidade');
     const cidadeInfo = await resolverCidade(viagem.destino);
+
+    if (cidadeInfo.naoEncontrada || cidadeInfo.latitude === null) {
+      console.warn(`[Itinerary] Cidade "${viagem.destino}" não encontrada no geocoding`);
+      resultado.erros.push(`Não foi possível localizar "${viagem.destino}" no mapa. Verifique o nome da cidade e tente novamente.`);
+      return { sucesso: false, resultado, cidadeInfo };
+    }
+
     console.log(`[Itinerary] Cidade: ${cidadeInfo.cidade}, ${cidadeInfo.estado}, ${cidadeInfo.pais} (${cidadeInfo.latitude}, ${cidadeInfo.longitude})`);
 
     // ETAPA 2 e 3: Buscar lugares e restaurantes em paralelo

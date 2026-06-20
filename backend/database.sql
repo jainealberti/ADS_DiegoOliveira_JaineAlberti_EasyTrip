@@ -76,6 +76,11 @@ CREATE INDEX IF NOT EXISTS idx_roteiro_viagem ON roteiro(fk_viagem_id_viagem);
 CREATE INDEX IF NOT EXISTS idx_atividade_roteiro ON atividade(fk_roteiro_id_roteiro);
 CREATE INDEX IF NOT EXISTS idx_custo_viagem ON custo(id_viagem);
 
+-- Colunas para compartilhamento de roteiro
+-- ALTER TABLE roteiro ADD COLUMN IF NOT EXISTS share_token VARCHAR(64) UNIQUE;
+-- ALTER TABLE roteiro ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT FALSE;
+-- ALTER TABLE roteiro ADD COLUMN IF NOT EXISTS data_compartilhamento TIMESTAMP;
+
 -- Caso as tabelas já existam sem as colunas novas, execute:
 -- ALTER TABLE viagem ADD COLUMN IF NOT EXISTS meio_transporte VARCHAR(50);
 -- ALTER TABLE viagem ADD COLUMN IF NOT EXISTS detalhes_extra TEXT;
