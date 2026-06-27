@@ -53,7 +53,15 @@ const login = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    res.json({ mensagem: 'Login realizado com sucesso!', token });
+    res.json({
+      mensagem: 'Login realizado com sucesso!',
+      token,
+      usuario: {
+        id_usuario: usuario.rows[0].id_usuario,
+        nome: usuario.rows[0].nome,
+        email: usuario.rows[0].email
+      }
+    });
   } catch (erro) {
     res.status(500).json({ mensagem: 'Erro ao realizar login', erro: erro.message });
   }

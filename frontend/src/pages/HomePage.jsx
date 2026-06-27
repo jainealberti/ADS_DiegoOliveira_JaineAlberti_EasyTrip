@@ -229,13 +229,21 @@ export default function HomePage() {
     setExploracaoResultado(null);
 
     try {
+      console.log('[Explorar] Enviando requisição para:', destino.trim());
       const res = await api.post('/ia/explorar-destino', { destino: destino.trim() });
+      console.log('[Explorar] Resposta recebida:', res.status, Object.keys(res.data || {}));
       setExploracaoResultado(res.data);
       setTimeout(() => {
         exploracaoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 150);
     } catch (err) {
+      console.error('[Explorar] Erro completo:', err);
+      console.error('[Explorar] Status:', err.response?.status);
+      console.error('[Explorar] Response data:', JSON.stringify(err.response?.data));
+      console.error('[Explorar] Message:', err.message);
       const msg = err.response?.data?.error?.message
+        || err.response?.data?.mensagem
+        || err.message
         || 'Não foi possível explorar este destino. Tente novamente.';
       setExploracaoErro(msg);
     } finally {
@@ -269,8 +277,18 @@ export default function HomePage() {
   function handleImgError(e) {
     e.target.onerror = null;
     e.target.style.display = 'none';
-    if (e.target.parentElement) {
-      e.target.parentElement.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    const parent = e.target.parentElement;
+    if (parent && !parent.querySelector('.lp-img-fallback-overlay')) {
+      parent.style.position = 'relative';
+      const overlay = document.createElement('div');
+      overlay.className = 'lp-img-fallback-overlay';
+      const altText = e.target.alt || '';
+      overlay.innerHTML = `
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+        <span class="lp-fallback-name">${altText}</span>
+        <span class="lp-fallback-label">Imagem não disponível</span>
+      `;
+      parent.appendChild(overlay);
     }
   }
 
@@ -452,10 +470,14 @@ export default function HomePage() {
                       {exploracaoResultado.locaisParaVisitar.map((item, i) => (
                         <div key={i} className="lp-place-card">
                           <div className="lp-place-card-img">
-                            {item.imageUrl ? (
-                              <img src={item.imageUrl} alt={item.nome} onError={handleImgError} />
+                            {item.imageUrl && typeof item.imageUrl === 'string' && item.imageUrl.startsWith('http') ? (
+                              <img src={item.imageUrl} alt={item.nome} onError={handleImgError} loading="lazy" />
                             ) : (
-                              <div className="lp-img-placeholder"><FiMapPin size={24} /><span>{item.nome}</span></div>
+                              <div className="lp-img-placeholder">
+                                <FiMapPin size={28} />
+                                <span className="lp-fallback-name">{item.nome}</span>
+                                <span className="lp-fallback-label">Imagem não disponível</span>
+                              </div>
                             )}
                             {item.categoria && <span className="lp-badge lp-badge-category">{item.categoria}</span>}
                           </div>
@@ -478,10 +500,14 @@ export default function HomePage() {
                       {exploracaoResultado.ondeJantar.map((item, i) => (
                         <div key={i} className="lp-place-card">
                           <div className="lp-place-card-img">
-                            {item.imageUrl ? (
-                              <img src={item.imageUrl} alt={item.nome} onError={handleImgError} />
+                            {item.imageUrl && typeof item.imageUrl === 'string' && item.imageUrl.startsWith('http') ? (
+                              <img src={item.imageUrl} alt={item.nome} onError={handleImgError} loading="lazy" />
                             ) : (
-                              <div className="lp-img-placeholder lp-img-placeholder-food"><FiStar size={24} /><span>{item.nome}</span></div>
+                              <div className="lp-img-placeholder lp-img-placeholder-food">
+                                <FiStar size={28} />
+                                <span className="lp-fallback-name">{item.nome}</span>
+                                <span className="lp-fallback-label">Imagem não disponível</span>
+                              </div>
                             )}
                             {item.faixaPreco && <span className="lp-badge lp-badge-price">{item.faixaPreco}</span>}
                           </div>
@@ -504,10 +530,14 @@ export default function HomePage() {
                       {exploracaoResultado.experiencias.map((item, i) => (
                         <div key={i} className="lp-place-card">
                           <div className="lp-place-card-img">
-                            {item.imageUrl ? (
-                              <img src={item.imageUrl} alt={item.nome} onError={handleImgError} />
+                            {item.imageUrl && typeof item.imageUrl === 'string' && item.imageUrl.startsWith('http') ? (
+                              <img src={item.imageUrl} alt={item.nome} onError={handleImgError} loading="lazy" />
                             ) : (
-                              <div className="lp-img-placeholder lp-img-placeholder-exp"><FiHeart size={24} /><span>{item.nome}</span></div>
+                              <div className="lp-img-placeholder lp-img-placeholder-exp">
+                                <FiHeart size={28} />
+                                <span className="lp-fallback-name">{item.nome}</span>
+                                <span className="lp-fallback-label">Imagem não disponível</span>
+                              </div>
                             )}
                             {item.tipo && <span className="lp-badge lp-badge-type">{item.tipo}</span>}
                           </div>
@@ -1158,20 +1188,56 @@ export default function HomePage() {
           padding: 16px;
           text-align: center;
         }
-        .lp-img-placeholder span {
-          font-size: 0.75rem;
-          font-weight: 500;
-          opacity: 0.9;
+        .lp-img-placeholder .lp-fallback-name {
+          font-size: 0.8rem;
+          font-weight: 600;
+          opacity: 0.95;
           max-width: 90%;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          line-height: 1.2;
+        }
+        .lp-img-placeholder .lp-fallback-label {
+          font-size: 0.65rem;
+          font-weight: 400;
+          opacity: 0.7;
+          letter-spacing: 0.3px;
+          text-transform: uppercase;
         }
         .lp-img-placeholder-food {
           background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         }
         .lp-img-placeholder-exp {
           background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        .lp-img-fallback-overlay {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: #fff;
+          padding: 16px;
+          text-align: center;
+          z-index: 1;
+        }
+        .lp-img-fallback-overlay .lp-fallback-name {
+          font-size: 0.8rem;
+          font-weight: 600;
+          max-width: 90%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .lp-img-fallback-overlay .lp-fallback-label {
+          font-size: 0.65rem;
+          opacity: 0.7;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
         }
         .lp-badge {
           position: absolute;

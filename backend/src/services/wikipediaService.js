@@ -1,10 +1,60 @@
 const WIKIPEDIA_API = 'https://pt.wikipedia.org/w/api.php';
 const WIKIPEDIA_EN_API = 'https://en.wikipedia.org/w/api.php';
+const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
 
 let ultimaChamadaWiki = 0;
-const MIN_INTERVALO_MS = 350;
+const MIN_INTERVALO_MS = 600;
+
+let circuitBreakerAberto = 0;
+const CIRCUIT_BREAKER_DURACAO_MS = 60_000;
+
+function wikiCircuitAberto() {
+  if (!circuitBreakerAberto) return false;
+  if (Date.now() - circuitBreakerAberto > CIRCUIT_BREAKER_DURACAO_MS) {
+    circuitBreakerAberto = 0;
+    console.log('[WikipediaService] Circuit breaker resetado');
+    return false;
+  }
+  return true;
+}
+
+function abrirCircuitBreaker() {
+  if (!circuitBreakerAberto) {
+    circuitBreakerAberto = Date.now();
+    console.warn('[WikipediaService] Circuit breaker ABERTO — Wikipedia em rate limit, pulando chamadas por 60s');
+  }
+}
+
+const BLOCKED_IMAGE_PATTERNS = [
+  '.svg', 'logo', 'Logo', 'flag', 'Flag', 'Bandeira', 'bandeira',
+  'coat_of_arms', 'Coat', 'Brasão', 'brasão', 'escudo', 'Escudo',
+  'selo', 'Selo', 'shield', 'Shield', 'emblem', 'Emblem',
+  'map', 'Map', 'mapa', 'Mapa', 'diagram', 'Diagram',
+  'chart', 'Chart', 'graph', 'Graph',
+  'icon', 'Icon', 'ícone', 'symbol', 'Symbol', 'pictogram',
+  'signature', 'Signature', 'assinatura', 'autograph',
+  'Wikidata', 'Commons-logo', 'Wikimedia-logo', 'Wiki-logo',
+  'Question_book', 'Edit-clear', 'Ambox', 'Crystal_',
+  'Nuvola_', 'Gnome-', 'Gtk-', 'Farm-Fresh',
+  'increase', 'decrease', 'steady', 'Steady',
+  'Red_pog', 'Blue_pog', 'Green_pog',
+  'Locator', 'locator', 'Location_dot', 'location_map',
+  'Relief_Map', 'relief_map', 'Topographic', 'topographic',
+  'Administrative', 'administrative', 'political_map',
+  'Blank_map', 'blank_map', 'Outline_map',
+  'No_image', 'no_image', 'Image_manquante', 'Sin_imagen',
+  'Placeholder', 'placeholder', 'Replace_this',
+  'Wappen', 'wappen', 'Blason', 'blason', 'Armoiries',
+  'Stemma', 'stemma', 'Herb_', 'herb_', 'Coa_',
+  'Census', 'census', 'Population', 'Demography',
+  'Klimadiagramm', 'Climate', 'climate_chart',
+];
 
 async function chamarWikiAPI(url, tentativa = 1) {
+  if (wikiCircuitAberto()) {
+    throw new Error('Wikipedia circuit breaker aberto');
+  }
+
   const agora = Date.now();
   const espera = MIN_INTERVALO_MS - (agora - ultimaChamadaWiki);
   if (espera > 0) await sleep(espera);
@@ -15,10 +65,11 @@ async function chamarWikiAPI(url, tentativa = 1) {
   });
 
   if (resp.status === 429) {
-    if (tentativa <= 2) {
-      await sleep(2000 * tentativa);
-      return chamarWikiAPI(url, tentativa + 1);
+    if (tentativa === 1) {
+      await sleep(2000);
+      return chamarWikiAPI(url, 2);
     }
+    abrirCircuitBreaker();
     throw new Error('Wikipedia rate limit persistente');
   }
 
@@ -31,14 +82,16 @@ async function chamarWikiAPI(url, tentativa = 1) {
     return JSON.parse(text);
   } catch {
     if (text.includes('rate') || text.includes('You are ma')) {
-      if (tentativa <= 2) {
-        await sleep(2000 * tentativa);
-        return chamarWikiAPI(url, tentativa + 1);
-      }
+      abrirCircuitBreaker();
       throw new Error('Wikipedia rate limit');
     }
     throw new Error('JSON inválido da Wikipedia');
   }
+}
+
+function isImagemBloqueada(urlOuTitulo) {
+  if (!urlOuTitulo) return true;
+  return BLOCKED_IMAGE_PATTERNS.some(p => urlOuTitulo.includes(p));
 }
 
 function ehPaginaDeCidade(titulo, snippet) {
@@ -64,13 +117,38 @@ function ehPaginaDePontoTuristico(titulo, snippet) {
     'forte', 'farol', 'jardim', 'memorial', 'estátua', 'ponte',
     'inaugurad', 'construíd', 'fundad', 'localizad', 'situad',
     'patrimônio', 'tombad', 'atração', 'turístic',
+    'restaurante', 'hotel', 'resort', 'pousada',
+    'museum', 'park', 'church', 'cathedral', 'beach', 'waterfall',
+    'monument', 'palace', 'castle', 'temple', 'bridge', 'tower',
+    'garden', 'square', 'plaza', 'market', 'harbor', 'port',
   ];
   return termos.some(t => texto.includes(t));
 }
 
+function calcularRelevancia(titulo, snippet, termoBuscado) {
+  const tituloLower = titulo.toLowerCase();
+  const termoLower = termoBuscado.toLowerCase();
+  const palavrasTermo = termoLower.split(/[\s,\-()]+/).filter(p => p.length > 2);
+
+  let score = 0;
+
+  if (tituloLower === termoLower) return 100;
+
+  if (tituloLower.includes(termoLower)) score += 50;
+
+  const palavrasNoTitulo = palavrasTermo.filter(p => tituloLower.includes(p));
+  score += (palavrasNoTitulo.length / palavrasTermo.length) * 40;
+
+  const snippetLower = (snippet || '').toLowerCase().replace(/<[^>]*>/g, '');
+  const palavrasNoSnippet = palavrasTermo.filter(p => snippetLower.includes(p));
+  score += (palavrasNoSnippet.length / palavrasTermo.length) * 10;
+
+  return score;
+}
+
 async function buscarPagina(termo, apiBase, seletor) {
   try {
-    const searchUrl = `${apiBase}?action=query&list=search&srsearch=${encodeURIComponent(termo)}&format=json&srlimit=5&origin=*`;
+    const searchUrl = `${apiBase}?action=query&list=search&srsearch=${encodeURIComponent(termo)}&format=json&srlimit=8&origin=*`;
     const searchData = await chamarWikiAPI(searchUrl);
 
     const results = searchData?.query?.search;
@@ -81,7 +159,19 @@ async function buscarPagina(termo, apiBase, seletor) {
       if (preferido) return preferido.title;
     }
 
-    return results[0].title;
+    const comScore = results.map(r => ({
+      ...r,
+      relevancia: calcularRelevancia(r.title, r.snippet, termo),
+    }));
+
+    comScore.sort((a, b) => b.relevancia - a.relevancia);
+
+    if (comScore[0].relevancia < 20) {
+      console.warn(`[WikipediaService] Resultado pouco relevante para "${termo}": "${comScore[0].title}" (score: ${comScore[0].relevancia.toFixed(1)})`);
+      return null;
+    }
+
+    return comScore[0].title;
   } catch (err) {
     console.warn('[WikipediaService] Busca falhou para:', termo, err.message);
     return null;
@@ -90,7 +180,7 @@ async function buscarPagina(termo, apiBase, seletor) {
 
 async function obterImagemDaPagina(titulo, apiBase) {
   try {
-    const url = `${apiBase}?action=query&titles=${encodeURIComponent(titulo)}&prop=pageimages&pithumbsize=800&format=json&origin=*`;
+    const url = `${apiBase}?action=query&titles=${encodeURIComponent(titulo)}&prop=pageimages&pithumbsize=1200&format=json&origin=*`;
     const data = await chamarWikiAPI(url);
 
     const pages = data?.query?.pages;
@@ -102,12 +192,120 @@ async function obterImagemDaPagina(titulo, apiBase) {
     const thumb = pages[pageId]?.thumbnail?.source;
     if (!thumb) return null;
 
-    if (thumb.includes('.svg') || thumb.includes('logo') || thumb.includes('flag') || thumb.includes('Flag') || thumb.includes('coat_of_arms') || thumb.includes('Coat')) {
-      return null;
-    }
+    if (isImagemBloqueada(thumb)) return null;
 
     return thumb;
   } catch {
+    return null;
+  }
+}
+
+async function obterImagensDaPagina(titulo, apiBase) {
+  try {
+    const url = `${apiBase}?action=query&titles=${encodeURIComponent(titulo)}&prop=images&imlimit=20&format=json&origin=*`;
+    const data = await chamarWikiAPI(url);
+
+    const pages = data?.query?.pages;
+    if (!pages) return null;
+
+    const pageId = Object.keys(pages)[0];
+    if (pageId === '-1') return null;
+
+    const images = pages[pageId]?.images;
+    if (!images || images.length === 0) return null;
+
+    const fotoCandidatas = images.filter(img => {
+      const title = img.title || '';
+      if (!title.match(/\.(jpg|jpeg|png)$/i)) return false;
+      if (isImagemBloqueada(title)) return false;
+      return true;
+    });
+
+    for (const img of fotoCandidatas.slice(0, 5)) {
+      const infoUrl = `${apiBase}?action=query&titles=${encodeURIComponent(img.title)}&prop=imageinfo&iiprop=url|size|mime&iiurlwidth=1200&format=json&origin=*`;
+      const infoData = await chamarWikiAPI(infoUrl);
+
+      const infoPages = infoData?.query?.pages;
+      if (!infoPages) continue;
+
+      const infoPageId = Object.keys(infoPages)[0];
+      if (infoPageId === '-1') continue;
+
+      const info = infoPages[infoPageId]?.imageinfo?.[0];
+      if (!info) continue;
+
+      const mime = info.mime || '';
+      if (!mime.startsWith('image/jpeg') && !mime.startsWith('image/png')) continue;
+
+      if (info.width < 400 || info.height < 250) continue;
+
+      const imgUrl = info.thumburl || info.url;
+      if (imgUrl && !isImagemBloqueada(imgUrl)) return imgUrl;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function calcularRelevanciaImagem(tituloArquivo, queryOriginal) {
+  const titulo = tituloArquivo.toLowerCase().replace(/^file:/i, '').replace(/\.(jpg|jpeg|png)$/i, '');
+  const palavrasQuery = queryOriginal.toLowerCase().split(/[\s,\-()]+/).filter(p => p.length > 2);
+
+  if (palavrasQuery.length === 0) return 0;
+
+  const palavrasEncontradas = palavrasQuery.filter(p => titulo.includes(p));
+  return palavrasEncontradas.length / palavrasQuery.length;
+}
+
+async function buscarImagemWikimediaCommons(query) {
+  try {
+    const searchUrl = `${COMMONS_API}?action=query&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrnamespace=6&gsrlimit=15&prop=imageinfo&iiprop=url|size|mime&iiurlwidth=1200&format=json&origin=*`;
+    const data = await chamarWikiAPI(searchUrl);
+
+    const pages = data?.query?.pages;
+    if (!pages) return null;
+
+    const candidatas = Object.values(pages)
+      .filter(p => {
+        const info = p.imageinfo?.[0];
+        if (!info) return false;
+
+        const mime = info.mime || '';
+        if (!mime.startsWith('image/jpeg') && !mime.startsWith('image/png')) return false;
+
+        const title = (p.title || '').toLowerCase();
+        if (isImagemBloqueada(title)) return false;
+
+        if (info.width < 500 || info.height < 300) return false;
+
+        const ratio = info.width / info.height;
+        if (ratio < 0.5 || ratio > 4) return false;
+
+        return true;
+      })
+      .map(p => {
+        const relevancia = calcularRelevanciaImagem(p.title, query);
+        const info = p.imageinfo[0];
+        const ratio = info.width / info.height;
+        const ratioScore = 1 - Math.min(Math.abs(ratio - 1.5), 1);
+        const scoreTotal = (relevancia * 0.7) + (ratioScore * 0.3);
+        return { ...p, scoreTotal, relevancia };
+      })
+      .sort((a, b) => b.scoreTotal - a.scoreTotal);
+
+    if (candidatas.length === 0) return null;
+
+    if (candidatas[0].relevancia < 0.35) {
+      console.warn(`[WikipediaService] Commons: nenhuma imagem relevante para "${query}" (melhor score: ${candidatas[0].relevancia.toFixed(2)}, titulo: "${candidatas[0].title}")`);
+      return null;
+    }
+
+    const info = candidatas[0].imageinfo[0];
+    return info.thumburl || info.url;
+  } catch (err) {
+    console.warn('[WikipediaService] Wikimedia Commons falhou:', err.message);
     return null;
   }
 }
@@ -155,19 +353,6 @@ function construirConsultasCidade(cidade) {
   return consultas;
 }
 
-function construirConsultasLocal(nome, cidade) {
-  const consultas = [];
-
-  if (cidade) {
-    consultas.push(`${nome} ${cidade}`);
-    consultas.push(nome);
-  } else {
-    consultas.push(nome);
-  }
-
-  return consultas;
-}
-
 async function buscarImagemWikipedia(nome, cidade) {
   const queryPrincipal = cidade ? `${nome} ${cidade}` : nome;
 
@@ -175,6 +360,9 @@ async function buscarImagemWikipedia(nome, cidade) {
   if (tituloPT) {
     const img = await obterImagemDaPagina(tituloPT, WIKIPEDIA_API);
     if (img) return img;
+
+    const imgAlt = await obterImagensDaPagina(tituloPT, WIKIPEDIA_API);
+    if (imgAlt) return imgAlt;
   }
 
   if (cidade) {
@@ -182,6 +370,9 @@ async function buscarImagemWikipedia(nome, cidade) {
     if (tituloSemCidade && tituloSemCidade !== tituloPT) {
       const img = await obterImagemDaPagina(tituloSemCidade, WIKIPEDIA_API);
       if (img) return img;
+
+      const imgAlt = await obterImagensDaPagina(tituloSemCidade, WIKIPEDIA_API);
+      if (imgAlt) return imgAlt;
     }
   }
 
@@ -189,6 +380,9 @@ async function buscarImagemWikipedia(nome, cidade) {
   if (tituloEN) {
     const img = await obterImagemDaPagina(tituloEN, WIKIPEDIA_EN_API);
     if (img) return img;
+
+    const imgAlt = await obterImagensDaPagina(tituloEN, WIKIPEDIA_EN_API);
+    if (imgAlt) return imgAlt;
   }
 
   return null;
@@ -202,6 +396,9 @@ async function buscarImagemCidadeWikipedia(cidade) {
     if (titulo) {
       const img = await obterImagemDaPagina(titulo, WIKIPEDIA_API);
       if (img) return img;
+
+      const imgAlt = await obterImagensDaPagina(titulo, WIKIPEDIA_API);
+      if (imgAlt) return imgAlt;
     }
   }
 
@@ -210,6 +407,9 @@ async function buscarImagemCidadeWikipedia(cidade) {
     if (titulo) {
       const img = await obterImagemDaPagina(titulo, WIKIPEDIA_EN_API);
       if (img) return img;
+
+      const imgAlt = await obterImagensDaPagina(titulo, WIKIPEDIA_EN_API);
+      if (imgAlt) return imgAlt;
     }
   }
 
@@ -242,21 +442,6 @@ async function buscarResumoWikipedia(termo, cidade) {
   }
 
   return null;
-}
-
-async function buscarImagensCidade(cidade) {
-  const resultado = { headerImage: null, locaisImages: {} };
-  resultado.headerImage = await buscarImagemCidadeWikipedia(cidade);
-  return resultado;
-}
-
-async function buscarImagensParaLocais(locais, cidade) {
-  const resultados = [];
-  for (const local of locais) {
-    const img = await buscarImagemWikipedia(local.nome || local.name, cidade);
-    resultados.push({ ...local, imageUrl: img || null });
-  }
-  return resultados;
 }
 
 async function enriquecerLugares(lugares, cidade, maxEnriquecimentos = 15) {
@@ -298,6 +483,5 @@ module.exports = {
   buscarInfoCidade,
   buscarImagemWikipedia,
   buscarImagemCidadeWikipedia,
-  buscarImagensCidade,
-  buscarImagensParaLocais,
+  buscarImagemWikimediaCommons,
 };

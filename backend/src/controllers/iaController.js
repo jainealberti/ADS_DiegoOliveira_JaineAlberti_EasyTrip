@@ -1,5 +1,4 @@
 const GEMINI_MODELS = [
-  'gemini-3.5-flash',
   'gemini-2.5-flash',
   'gemini-2.5-pro',
 ];
@@ -220,28 +219,208 @@ REGRAS:
   }
 };
 
+const FALLBACK_LOCAIS_POR_DESTINO = {
+  'rio de janeiro': {
+    locais: [
+      { nome: 'Cristo Redentor', descricao: 'Estátua icônica no topo do Corcovado com vista panorâmica', categoria: 'monumento', avaliacao: 4.8, palavraChaveImagem: 'Cristo Redentor' },
+      { nome: 'Pão de Açúcar', descricao: 'Bondinho sobre a Baía de Guanabara com vista deslumbrante', categoria: 'mirante', avaliacao: 4.7, palavraChaveImagem: 'Pão de Açúcar Rio de Janeiro' },
+      { nome: 'Praia de Copacabana', descricao: 'A praia mais famosa do Brasil com calçadão icônico', categoria: 'praia', avaliacao: 4.5, palavraChaveImagem: 'Copacabana' },
+      { nome: 'Jardim Botânico do Rio de Janeiro', descricao: 'Palmeiras imperiais e flora tropical em área preservada', categoria: 'parque', avaliacao: 4.6, palavraChaveImagem: 'Jardim Botânico do Rio de Janeiro' },
+      { nome: 'Museu do Amanhã', descricao: 'Museu interativo de ciência e sustentabilidade na Praça Mauá', categoria: 'museu', avaliacao: 4.5, palavraChaveImagem: 'Museu do Amanhã' },
+    ],
+    restaurantes: [
+      { nome: 'Confeitaria Colombo', descricao: 'Confeitaria histórica de 1894 com arquitetura art nouveau', tipoCozinha: 'Confeitaria', faixaPreco: '$$', palavraChaveImagem: 'Confeitaria Colombo' },
+      { nome: 'Restaurante Aprazível', descricao: 'Culinária brasileira contemporânea em Santa Teresa', tipoCozinha: 'Brasileira', faixaPreco: '$$$', palavraChaveImagem: 'Aprazível restaurante Santa Teresa' },
+      { nome: 'Bar Urca', descricao: 'Petiscos e chopp com vista para a Baía de Guanabara', tipoCozinha: 'Petiscos', faixaPreco: '$$', palavraChaveImagem: 'Bar Urca Rio de Janeiro' },
+    ],
+    experiencias: [
+      { nome: 'Trilha da Pedra Bonita', descricao: 'Caminhada com vista panorâmica da Zona Sul carioca', tipo: 'natureza', palavraChaveImagem: 'Pedra Bonita Rio de Janeiro' },
+      { nome: 'Escadaria Selarón', descricao: 'Escadaria artística com azulejos coloridos na Lapa', tipo: 'cultural', palavraChaveImagem: 'Escadaria Selarón' },
+      { nome: 'Feira de São Cristóvão', descricao: 'Cultura nordestina com música, comida e artesanato', tipo: 'cultural', palavraChaveImagem: 'Feira de São Cristóvão' },
+    ],
+  },
+  'são paulo': {
+    locais: [
+      { nome: 'Parque Ibirapuera', descricao: 'Principal parque urbano com museus e áreas verdes', categoria: 'parque', avaliacao: 4.7, palavraChaveImagem: 'Parque Ibirapuera' },
+      { nome: 'Avenida Paulista', descricao: 'Principal avenida da cidade com centros culturais', categoria: 'centro histórico', avaliacao: 4.5, palavraChaveImagem: 'Avenida Paulista' },
+      { nome: 'MASP', descricao: 'Museu de Arte de São Paulo com acervo internacional', categoria: 'museu', avaliacao: 4.6, palavraChaveImagem: 'Museu de Arte de São Paulo' },
+      { nome: 'Catedral da Sé', descricao: 'Catedral neogótica no centro histórico da cidade', categoria: 'igreja', avaliacao: 4.4, palavraChaveImagem: 'Catedral da Sé São Paulo' },
+      { nome: 'Pinacoteca do Estado de São Paulo', descricao: 'Museu de arte mais antigo da cidade, no Jardim da Luz', categoria: 'museu', avaliacao: 4.6, palavraChaveImagem: 'Pinacoteca do Estado de São Paulo' },
+    ],
+    restaurantes: [
+      { nome: 'Mercado Municipal de São Paulo', descricao: 'Mercadão com mortadela, pastel e frutas tropicais', tipoCozinha: 'Mercado', faixaPreco: '$$', palavraChaveImagem: 'Mercado Municipal de São Paulo' },
+      { nome: 'A Casa do Porco', descricao: 'Um dos melhores restaurantes do mundo, especializado em porco', tipoCozinha: 'Brasileira', faixaPreco: '$$$', palavraChaveImagem: 'A Casa do Porco restaurante' },
+      { nome: 'Bar da Dona Onça', descricao: 'Comida brasileira autêntica no Edifício Copan', tipoCozinha: 'Brasileira', faixaPreco: '$$', palavraChaveImagem: 'Edifício Copan São Paulo' },
+    ],
+    experiencias: [
+      { nome: 'Beco do Batman', descricao: 'Galeria de grafite a céu aberto em Vila Madalena', tipo: 'cultural', palavraChaveImagem: 'Beco do Batman São Paulo' },
+      { nome: 'Liberdade', descricao: 'Bairro japonês com culinária e cultura oriental', tipo: 'cultural', palavraChaveImagem: 'Bairro da Liberdade São Paulo' },
+      { nome: 'Theatro Municipal de São Paulo', descricao: 'Ópera e espetáculos em edifício histórico de 1911', tipo: 'cultural', palavraChaveImagem: 'Theatro Municipal de São Paulo' },
+    ],
+  },
+  'paris': {
+    locais: [
+      { nome: 'Torre Eiffel', descricao: 'Símbolo icônico de Paris com vista panorâmica da cidade', categoria: 'monumento', avaliacao: 4.7, palavraChaveImagem: 'Eiffel Tower' },
+      { nome: 'Museu do Louvre', descricao: 'Maior museu de arte do mundo com a Mona Lisa', categoria: 'museu', avaliacao: 4.8, palavraChaveImagem: 'Louvre Museum' },
+      { nome: 'Catedral de Notre-Dame', descricao: 'Catedral gótica medieval na Île de la Cité', categoria: 'igreja', avaliacao: 4.7, palavraChaveImagem: 'Notre-Dame de Paris' },
+      { nome: 'Arco do Triunfo', descricao: 'Monumento histórico no final da Champs-Élysées', categoria: 'monumento', avaliacao: 4.6, palavraChaveImagem: 'Arc de Triomphe' },
+      { nome: 'Sacré-Cœur', descricao: 'Basílica no topo de Montmartre com vista de Paris', categoria: 'igreja', avaliacao: 4.6, palavraChaveImagem: 'Basilique du Sacré-Cœur' },
+    ],
+    restaurantes: [
+      { nome: 'Le Bouillon Chartier', descricao: 'Restaurante histórico de 1896 com preços acessíveis', tipoCozinha: 'Francesa', faixaPreco: '$$', palavraChaveImagem: 'Bouillon Chartier Paris' },
+      { nome: 'Café de Flore', descricao: 'Café icônico em Saint-Germain-des-Prés', tipoCozinha: 'Café', faixaPreco: '$$$', palavraChaveImagem: 'Café de Flore' },
+      { nome: 'Le Comptoir du Panthéon', descricao: 'Bistrô francês clássico no Quartier Latin', tipoCozinha: 'Bistrô', faixaPreco: '$$', palavraChaveImagem: 'Panthéon Paris' },
+    ],
+    experiencias: [
+      { nome: 'Cruzeiro pelo Rio Sena', descricao: 'Passeio de barco pelos principais monumentos de Paris', tipo: 'passeio', palavraChaveImagem: 'Seine river cruise Paris' },
+      { nome: 'Jardim de Luxemburgo', descricao: 'Jardim elegante no coração do Quartier Latin', tipo: 'natureza', palavraChaveImagem: 'Jardin du Luxembourg' },
+      { nome: 'Montmartre', descricao: 'Bairro boêmio com artistas, cafés e vista panorâmica', tipo: 'cultural', palavraChaveImagem: 'Montmartre Paris' },
+    ],
+  },
+  'roma': {
+    locais: [
+      { nome: 'Coliseu', descricao: 'Anfiteatro romano do século I, ícone de Roma', categoria: 'monumento', avaliacao: 4.8, palavraChaveImagem: 'Colosseum' },
+      { nome: 'Vaticano', descricao: 'Menor país do mundo com a Capela Sistina e Basílica', categoria: 'monumento', avaliacao: 4.9, palavraChaveImagem: 'Vatican City' },
+      { nome: 'Fontana di Trevi', descricao: 'Fonte barroca mais famosa do mundo no coração de Roma', categoria: 'monumento', avaliacao: 4.7, palavraChaveImagem: 'Trevi Fountain' },
+      { nome: 'Panteão', descricao: 'Templo romano com a maior cúpula de concreto não armado', categoria: 'monumento', avaliacao: 4.8, palavraChaveImagem: 'Pantheon Rome' },
+      { nome: 'Fórum Romano', descricao: 'Ruínas do centro político da Roma Antiga', categoria: 'monumento', avaliacao: 4.6, palavraChaveImagem: 'Roman Forum' },
+    ],
+    restaurantes: [
+      { nome: 'Da Enzo al 29', descricao: 'Trattoria autêntica no bairro Trastevere', tipoCozinha: 'Italiana', faixaPreco: '$$', palavraChaveImagem: 'Trastevere Roma' },
+      { nome: 'Roscioli', descricao: 'Restaurante e deli com massas e vinhos italianos', tipoCozinha: 'Italiana', faixaPreco: '$$$', palavraChaveImagem: 'Roscioli Roma restaurant' },
+      { nome: 'Pizzarium', descricao: 'Pizza al taglio premiada do chef Gabriele Bonci', tipoCozinha: 'Pizza', faixaPreco: '$', palavraChaveImagem: 'Pizzarium Roma' },
+    ],
+    experiencias: [
+      { nome: 'Trastevere à noite', descricao: 'Passeio pelo bairro mais charmoso de Roma', tipo: 'cultural', palavraChaveImagem: 'Trastevere Rome' },
+      { nome: 'Villa Borghese', descricao: 'Jardins e galeria de arte renascentista', tipo: 'natureza', palavraChaveImagem: 'Villa Borghese' },
+      { nome: 'Via Appia Antica', descricao: 'Caminhada pela estrada romana milenar com catacumbas', tipo: 'aventura', palavraChaveImagem: 'Appian Way Rome' },
+    ],
+  },
+  'gramado': {
+    locais: [
+      { nome: 'Lago Negro', descricao: 'Lago cercado por hortênsias e araucárias no centro', categoria: 'parque', avaliacao: 4.6, palavraChaveImagem: 'Lago Negro Gramado' },
+      { nome: 'Mini Mundo', descricao: 'Parque temático com miniaturas de construções famosas', categoria: 'parque', avaliacao: 4.5, palavraChaveImagem: 'Mini Mundo Gramado' },
+      { nome: 'Igreja Matriz São Pedro', descricao: 'Igreja de pedra basáltica na Praça das Etnias', categoria: 'igreja', avaliacao: 4.5, palavraChaveImagem: 'Igreja Matriz São Pedro Gramado' },
+      { nome: 'Rua Coberta', descricao: 'Rua coberta com restaurantes, lojas e eventos', categoria: 'centro histórico', avaliacao: 4.4, palavraChaveImagem: 'Rua Coberta Gramado' },
+    ],
+    restaurantes: [
+      { nome: 'Colosseo', descricao: 'Restaurante italiano tradicional na Avenida Borges', tipoCozinha: 'Italiana', faixaPreco: '$$$', palavraChaveImagem: 'Colosseo Restaurante Gramado' },
+      { nome: 'Chocolates Prawer', descricao: 'Fábrica e loja de chocolates artesanais', tipoCozinha: 'Chocolateria', faixaPreco: '$$', palavraChaveImagem: 'Chocolates Prawer Gramado' },
+      { nome: 'Café Colonial Bela Vista', descricao: 'Café colonial típico da Serra Gaúcha', tipoCozinha: 'Café Colonial', faixaPreco: '$$', palavraChaveImagem: 'Café Colonial Bela Vista Gramado' },
+    ],
+    experiencias: [
+      { nome: 'Snowland', descricao: 'Parque de neve indoor com esqui e snowboard', tipo: 'aventura', palavraChaveImagem: 'Snowland Gramado' },
+      { nome: 'Natal Luz', descricao: 'Festival natalino com espetáculos e decoração', tipo: 'cultural', palavraChaveImagem: 'Natal Luz Gramado' },
+      { nome: 'Vale do Quilombo', descricao: 'Mirante natural com vista do vale e cachoeiras', tipo: 'natureza', palavraChaveImagem: 'Vale do Quilombo Gramado' },
+    ],
+  },
+  'salvador': {
+    locais: [
+      { nome: 'Pelourinho', descricao: 'Centro histórico colonial com casarões coloridos', categoria: 'centro histórico', avaliacao: 4.5, palavraChaveImagem: 'Pelourinho Salvador' },
+      { nome: 'Elevador Lacerda', descricao: 'Elevador art déco ligando Cidade Alta e Baixa', categoria: 'monumento', avaliacao: 4.4, palavraChaveImagem: 'Elevador Lacerda' },
+      { nome: 'Farol da Barra', descricao: 'Farol histórico na ponta da praia da Barra', categoria: 'monumento', avaliacao: 4.6, palavraChaveImagem: 'Farol da Barra Salvador' },
+      { nome: 'Igreja e Convento de São Francisco', descricao: 'Obra-prima do barroco brasileiro com ouro', categoria: 'igreja', avaliacao: 4.7, palavraChaveImagem: 'Igreja de São Francisco Salvador' },
+    ],
+    restaurantes: [
+      { nome: 'Acarajé da Dinha', descricao: 'Acarajé tradicional baiano no Rio Vermelho', tipoCozinha: 'Baiana', faixaPreco: '$', palavraChaveImagem: 'Acarajé da Dinha Salvador' },
+      { nome: 'Restaurante Yemanjá', descricao: 'Frutos do mar e culinária baiana autêntica', tipoCozinha: 'Baiana', faixaPreco: '$$$', palavraChaveImagem: 'Restaurante Yemanjá Salvador' },
+      { nome: 'Mercado Modelo', descricao: 'Artesanato e comida baiana em mercado histórico', tipoCozinha: 'Regional', faixaPreco: '$$', palavraChaveImagem: 'Mercado Modelo Salvador' },
+    ],
+    experiencias: [
+      { nome: 'Roda de capoeira', descricao: 'Assistir ou participar de capoeira no Terreiro de Jesus', tipo: 'cultural', palavraChaveImagem: 'Capoeira Salvador' },
+      { nome: 'Praia do Porto da Barra', descricao: 'Praia urbana com águas calmas na Baía de Todos-os-Santos', tipo: 'natureza', palavraChaveImagem: 'Porto da Barra Salvador' },
+      { nome: 'Passeio de escuna pela Baía', descricao: 'Tour de barco pelas ilhas da Baía de Todos-os-Santos', tipo: 'passeio', palavraChaveImagem: 'Baía de Todos os Santos' },
+    ],
+  },
+  'foz do iguaçu': {
+    locais: [
+      { nome: 'Cataratas do Iguaçu', descricao: 'Uma das 7 maravilhas da natureza com 275 quedas', categoria: 'cachoeira', avaliacao: 4.9, palavraChaveImagem: 'Cataratas do Iguaçu' },
+      { nome: 'Parque das Aves', descricao: 'Viveiros com aves tropicais brasileiras em mata nativa', categoria: 'parque', avaliacao: 4.7, palavraChaveImagem: 'Parque das Aves Foz do Iguaçu' },
+      { nome: 'Itaipu Binacional', descricao: 'Maior usina hidrelétrica do mundo em geração', categoria: 'monumento', avaliacao: 4.6, palavraChaveImagem: 'Itaipu Dam' },
+      { nome: 'Marco das Três Fronteiras', descricao: 'Ponto onde se encontram Brasil, Argentina e Paraguai', categoria: 'mirante', avaliacao: 4.3, palavraChaveImagem: 'Marco das Três Fronteiras' },
+    ],
+    restaurantes: [
+      { nome: 'Restaurante Porto Canoas', descricao: 'Restaurante dentro do Parque Nacional do Iguaçu', tipoCozinha: 'Brasileira', faixaPreco: '$$$', palavraChaveImagem: 'Restaurante Porto Canoas Foz do Iguaçu' },
+      { nome: 'Capitão Bar', descricao: 'Churrascaria e petiscos com música ao vivo', tipoCozinha: 'Churrascaria', faixaPreco: '$$', palavraChaveImagem: 'Capitão Bar Foz do Iguaçu' },
+    ],
+    experiencias: [
+      { nome: 'Macuco Safari', descricao: 'Passeio de barco sob as cataratas com banho de cachoeira', tipo: 'aventura', palavraChaveImagem: 'Macuco Safari Iguaçu' },
+      { nome: 'Cataratas lado argentino', descricao: 'Vista diferente das cataratas pelo Parque Nacional argentino', tipo: 'passeio', palavraChaveImagem: 'Iguazu Falls Argentina' },
+      { nome: 'Compras em Ciudad del Este', descricao: 'Comércio popular no Paraguai a poucos km', tipo: 'passeio', palavraChaveImagem: 'Ciudad del Este' },
+    ],
+  },
+  'lisboa': {
+    locais: [
+      { nome: 'Torre de Belém', descricao: 'Torre manuelina à beira do Tejo, patrimônio UNESCO', categoria: 'monumento', avaliacao: 4.5, palavraChaveImagem: 'Torre de Belém' },
+      { nome: 'Mosteiro dos Jerónimos', descricao: 'Obra-prima da arquitetura manuelina em Belém', categoria: 'monumento', avaliacao: 4.7, palavraChaveImagem: 'Mosteiro dos Jerónimos' },
+      { nome: 'Castelo de São Jorge', descricao: 'Castelo mourisco com vista panorâmica de Lisboa', categoria: 'monumento', avaliacao: 4.5, palavraChaveImagem: 'Castelo de São Jorge' },
+      { nome: 'Praça do Comércio', descricao: 'Grande praça ribeirinha no coração da Baixa', categoria: 'praça', avaliacao: 4.5, palavraChaveImagem: 'Praça do Comércio Lisboa' },
+      { nome: 'Oceanário de Lisboa', descricao: 'Segundo maior oceanário da Europa no Parque das Nações', categoria: 'museu', avaliacao: 4.7, palavraChaveImagem: 'Oceanário de Lisboa' },
+    ],
+    restaurantes: [
+      { nome: 'Pastéis de Belém', descricao: 'Pastel de nata original desde 1837', tipoCozinha: 'Pastelaria', faixaPreco: '$', palavraChaveImagem: 'Pastéis de Belém' },
+      { nome: 'Time Out Market', descricao: 'Mercado gastronômico com os melhores chefs de Lisboa', tipoCozinha: 'Variada', faixaPreco: '$$', palavraChaveImagem: 'Time Out Market Lisboa' },
+      { nome: 'Cervejaria Ramiro', descricao: 'Marisqueira famosa com frutos do mar frescos', tipoCozinha: 'Marisqueira', faixaPreco: '$$$', palavraChaveImagem: 'Cervejaria Ramiro Lisboa' },
+    ],
+    experiencias: [
+      { nome: 'Elétrico 28', descricao: 'Passeio de bonde pelas ruas históricas de Lisboa', tipo: 'passeio', palavraChaveImagem: 'Tram 28 Lisbon' },
+      { nome: 'Alfama', descricao: 'Bairro medieval com fado, becos e miradouros', tipo: 'cultural', palavraChaveImagem: 'Alfama Lisbon' },
+      { nome: 'Sintra', descricao: 'Palácios e castelos encantados nos arredores de Lisboa', tipo: 'passeio', palavraChaveImagem: 'Sintra Portugal' },
+    ],
+  },
+  'nova york': {
+    locais: [
+      { nome: 'Estátua da Liberdade', descricao: 'Símbolo de liberdade e ícone dos Estados Unidos', categoria: 'monumento', avaliacao: 4.7, palavraChaveImagem: 'Statue of Liberty' },
+      { nome: 'Central Park', descricao: 'Parque urbano icônico no coração de Manhattan', categoria: 'parque', avaliacao: 4.8, palavraChaveImagem: 'Central Park New York' },
+      { nome: 'Times Square', descricao: 'Cruzamento mais movimentado do mundo com luzes neon', categoria: 'praça', avaliacao: 4.5, palavraChaveImagem: 'Times Square' },
+      { nome: 'Empire State Building', descricao: 'Arranha-céu art déco com observatório panorâmico', categoria: 'mirante', avaliacao: 4.6, palavraChaveImagem: 'Empire State Building' },
+      { nome: 'Metropolitan Museum of Art', descricao: 'Maior museu de arte dos EUA com 5.000 anos de arte', categoria: 'museu', avaliacao: 4.8, palavraChaveImagem: 'Metropolitan Museum of Art' },
+    ],
+    restaurantes: [
+      { nome: 'Katz\'s Delicatessen', descricao: 'Deli histórica de 1888 com pastrami legendário', tipoCozinha: 'Deli', faixaPreco: '$$', palavraChaveImagem: 'Katz\'s Delicatessen New York' },
+      { nome: 'Joe\'s Pizza', descricao: 'Pizza nova-iorquina clássica em Greenwich Village', tipoCozinha: 'Pizza', faixaPreco: '$', palavraChaveImagem: 'New York pizza' },
+      { nome: 'Chelsea Market', descricao: 'Mercado gastronômico em antigo prédio industrial', tipoCozinha: 'Variada', faixaPreco: '$$', palavraChaveImagem: 'Chelsea Market New York' },
+    ],
+    experiencias: [
+      { nome: 'Broadway', descricao: 'Assistir um musical nos teatros mais famosos do mundo', tipo: 'cultural', palavraChaveImagem: 'Broadway Theatre New York' },
+      { nome: 'Brooklyn Bridge', descricao: 'Caminhada pela ponte histórica com vista de Manhattan', tipo: 'passeio', palavraChaveImagem: 'Brooklyn Bridge' },
+      { nome: 'High Line', descricao: 'Parque linear elevado sobre antigos trilhos de trem', tipo: 'passeio', palavraChaveImagem: 'High Line New York' },
+    ],
+  },
+};
+
 async function gerarExploracaoFallback(destino) {
   const { buscarImagemCidade, buscarImagensParaLista } = require('../services/imageService');
 
-  const locais = [
-    { nome: `Pontos turísticos de ${destino}`, descricao: 'Pesquise as atrações mais visitadas da região', categoria: 'monumento', avaliacao: 0, palavraChaveImagem: destino },
-    { nome: `Museus de ${destino}`, descricao: 'Conheça a história e cultura local', categoria: 'museu', avaliacao: 0, palavraChaveImagem: `museum ${destino}` },
-    { nome: `Parques de ${destino}`, descricao: 'Explore a natureza do destino', categoria: 'parque', avaliacao: 0, palavraChaveImagem: `park ${destino}` },
-    { nome: `Mirantes de ${destino}`, descricao: 'Aprecie a paisagem urbana ou natural', categoria: 'mirante', avaliacao: 0, palavraChaveImagem: `viewpoint ${destino}` },
-    { nome: `Centro histórico de ${destino}`, descricao: 'Caminhe pelas ruas com arquitetura marcante', categoria: 'centro histórico', avaliacao: 0, palavraChaveImagem: `historic center ${destino}` },
-  ];
+  const destinoLower = destino.toLowerCase().trim();
+  const fallbackConhecido = Object.keys(FALLBACK_LOCAIS_POR_DESTINO).find(
+    k => destinoLower.includes(k) || k.includes(destinoLower)
+  );
 
-  const restaurantes = [
-    { nome: `Culinária regional de ${destino}`, descricao: 'Experimente os pratos típicos da região', tipoCozinha: 'Regional', faixaPreco: '$$', palavraChaveImagem: `restaurant ${destino}` },
-    { nome: `Restaurantes de ${destino}`, descricao: 'Consulte avaliações online para boas opções', tipoCozinha: 'Variada', faixaPreco: '$$$', palavraChaveImagem: `food ${destino}` },
-    { nome: `Comida de rua de ${destino}`, descricao: 'Sabores locais autênticos a preços acessíveis', tipoCozinha: 'Street food', faixaPreco: '$$', palavraChaveImagem: `street food ${destino}` },
-  ];
+  let locais, restaurantes, experiencias;
 
-  const experiencias = [
-    { nome: `Tour por ${destino}`, descricao: 'Conheça os principais pontos com guia local', tipo: 'cultural', palavraChaveImagem: `tourism ${destino}` },
-    { nome: `Gastronomia de ${destino}`, descricao: 'Degustação de pratos e bebidas típicas', tipo: 'gastronômica', palavraChaveImagem: `cuisine ${destino}` },
-    { nome: `Natureza em ${destino}`, descricao: 'Trilhas, passeios de barco ou caminhadas', tipo: 'natureza', palavraChaveImagem: `nature ${destino}` },
-  ];
+  if (fallbackConhecido) {
+    const dados = FALLBACK_LOCAIS_POR_DESTINO[fallbackConhecido];
+    locais = dados.locais;
+    restaurantes = dados.restaurantes;
+    experiencias = dados.experiencias;
+  } else {
+    locais = [
+      { nome: `Centro de ${destino}`, descricao: 'Explore o centro e a arquitetura local', categoria: 'centro histórico', avaliacao: 0, palavraChaveImagem: `Centro histórico ${destino}` },
+      { nome: `Igreja principal de ${destino}`, descricao: 'Visite a igreja ou catedral mais importante', categoria: 'igreja', avaliacao: 0, palavraChaveImagem: `Igreja matriz ${destino}` },
+      { nome: `Praça central de ${destino}`, descricao: 'Conheça a praça principal da cidade', categoria: 'praça', avaliacao: 0, palavraChaveImagem: `Praça central ${destino}` },
+    ];
+
+    restaurantes = [
+      { nome: `Gastronomia local de ${destino}`, descricao: 'Pratos típicos e sabores regionais', tipoCozinha: 'Regional', faixaPreco: '$$', palavraChaveImagem: `Restaurante típico ${destino}` },
+      { nome: `Mercado de ${destino}`, descricao: 'Mercado local com produtos frescos e típicos', tipoCozinha: 'Mercado', faixaPreco: '$', palavraChaveImagem: `Mercado municipal ${destino}` },
+    ];
+
+    experiencias = [
+      { nome: `Passeio por ${destino}`, descricao: 'Caminhada pelos principais pontos da cidade', tipo: 'passeio', palavraChaveImagem: `Pontos turísticos ${destino}` },
+      { nome: `Natureza em ${destino}`, descricao: 'Trilhas, parques e paisagens naturais', tipo: 'natureza', palavraChaveImagem: `Parque natural ${destino}` },
+    ];
+  }
 
   const headerImage = await buscarImagemCidade(destino);
 
@@ -252,9 +431,11 @@ async function gerarExploracaoFallback(destino) {
   return {
     destino: destino,
     pais: '',
-    resumo: `${destino} é um destino fascinante com cultura rica, paisagens marcantes e experiências únicas para todos os perfis de viajante. Use nosso gerador de roteiros com IA para criar um plano completo e personalizado.`,
-    melhorEpoca: 'Pesquise a sazonalidade do destino para escolher a melhor época, considerando clima e eventos locais.',
-    clima: 'Consulte a previsão do tempo antes de viajar para se preparar adequadamente.',
+    resumo: fallbackConhecido
+      ? `${destino} é um destino incrível com atrações imperdíveis, gastronomia marcante e experiências únicas. Use nosso gerador de roteiros com IA para criar um plano completo e personalizado.`
+      : `${destino} é um destino fascinante. Use nosso gerador de roteiros com IA para criar um plano completo e personalizado. Configure a GEMINI_API_KEY para obter informações detalhadas.`,
+    melhorEpoca: 'Pesquise a sazonalidade do destino para escolher a melhor época.',
+    clima: 'Consulte a previsão do tempo antes de viajar.',
     diasRecomendados: '3 a 5 dias',
     headerImage: headerImage || null,
     locaisParaVisitar: locaisComImagem,
@@ -265,11 +446,16 @@ async function gerarExploracaoFallback(destino) {
       'Verifique a previsão do tempo antes de viajar.',
       'Reserve hospedagem e transporte com antecedência para melhores preços.',
     ],
-    avisoConfiabilidade: 'Não foi possível obter informações detalhadas pela IA no momento. As sugestões acima são genéricas. Gere um roteiro completo para obter recomendações específicas e personalizadas.',
+    avisoConfiabilidade: fallbackConhecido
+      ? ''
+      : 'Não foi possível obter informações detalhadas pela IA. Configure a GEMINI_API_KEY para recomendações personalizadas.',
   };
 }
 
 const explorarDestino = async (req, res) => {
+  console.log('[explorarDestino] Body recebido:', JSON.stringify(req.body));
+  console.log('[explorarDestino] GEMINI_API_KEY presente?', !!process.env.GEMINI_API_KEY);
+
   const { destino } = req.body;
 
   if (!destino || destino.trim().length < 2) {
@@ -285,13 +471,25 @@ const explorarDestino = async (req, res) => {
   const destinoLimpo = destino.trim();
 
   if (!process.env.GEMINI_API_KEY) {
-    return res.json(await gerarExploracaoFallback(destinoLimpo));
+    console.log('[explorarDestino] Sem GEMINI_API_KEY, usando fallback direto');
+    try {
+      return res.json(await gerarExploracaoFallback(destinoLimpo));
+    } catch (fallbackErro) {
+      console.error('[explorarDestino] Fallback falhou (sem key):', fallbackErro.message, fallbackErro.stack);
+      return res.status(500).json({
+        error: {
+          code: 'IA_UNAVAILABLE',
+          message: 'Serviço de exploração temporariamente indisponível. Tente novamente.',
+        },
+      });
+    }
   }
 
   try {
     const { GoogleGenerativeAI } = require('@google/generative-ai');
     const { buscarImagemCidade, buscarImagensParaLista } = require('../services/imageService');
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    console.log('[explorarDestino] Chamando Gemini para:', destinoLimpo);
 
     const prompt = `Você é um guia de viagens especialista com conhecimento real e verificável. O usuário quer explorar: "${destinoLimpo}".
 
@@ -299,27 +497,43 @@ REGRAS OBRIGATÓRIAS:
 - Responda em português do Brasil.
 - Use APENAS informações reais e verificáveis. NUNCA invente nomes de lugares, restaurantes ou experiências.
 - Todos os locais, restaurantes e experiências DEVEM ser reais, existentes e verificáveis no Google Maps.
-- Para cidades brasileiras, SEMPRE inclua o estado no campo "destino" (ex: "Cunha, São Paulo", "Monte Sião, Minas Gerais", "Pirenópolis, Goiás").
+- Para cidades brasileiras, SEMPRE inclua o estado no campo "destino" (ex: "Cunha, São Paulo", "Monte Sião, Minas Gerais").
 - Para cidades internacionais, inclua o país (ex: "Hallstatt, Áustria").
-- O campo "palavraChaveImagem" deve conter o NOME OFICIAL do local como apareceria na Wikipedia (ex: "Cristo Redentor", "Mercado Público de Porto Alegre", "Parque Ibirapuera", "Catedral da Sé"). Para locais menos conhecidos, adicione a cidade (ex: "Praça da Matriz Cunha").
-- Para restaurantes: use o nome REAL e COMPLETO do restaurante. Se a cidade for pequena e você não tiver certeza de nomes reais de restaurantes, use estabelecimentos da região que você tenha certeza que existem.
+
+REGRAS CRÍTICAS PARA FOTOS (palavraChaveImagem):
+- O campo "palavraChaveImagem" é FUNDAMENTAL para buscar fotos reais do local.
+- Para locais turísticos: use o NOME OFICIAL COMPLETO como aparece na Wikipedia. Exemplos:
+  - "Cristo Redentor" (não "cristo" nem "estátua do cristo")
+  - "Parque Ibirapuera" (não "parque em SP")
+  - "Cataratas do Iguaçu" (não "cachoeira")
+  - "Torre Eiffel" ou "Eiffel Tower"
+  - "Colosseum" ou "Coliseu de Roma"
+- Para restaurantes: use o NOME REAL DO RESTAURANTE + CIDADE. Se não souber o nome exato, use um prato típico + cidade. Exemplos:
+  - "Confeitaria Colombo Rio de Janeiro"
+  - "Pastéis de Belém Lisboa"
+  - "Mercado Municipal de São Paulo"
+- Para experiências: use o NOME DO LOCAL PRINCIPAL da experiência. Exemplos:
+  - "Escadaria Selarón"
+  - "Brooklyn Bridge"
+  - "Trastevere Rome"
+- NUNCA use palavras genéricas como "restaurant", "food", "tourism", "landmark" como palavraChaveImagem.
+- Se for um local pouco conhecido, adicione a cidade ao final: "Praça da Matriz Cunha"
+
 - Descrições devem ter no máximo 15 palavras cada.
 
-REGRAS PARA CIDADES PEQUENAS OU POUCO CONHECIDAS:
-- Se a cidade for pequena, rural ou pouco conhecida, NÃO invente locais ou restaurantes fictícios.
-- É MELHOR retornar menos itens (2-3) com informações reais do que 5-6 itens inventados.
-- Para cidades pequenas, priorize: praças centrais, igrejas históricas, cachoeiras, mirantes, restaurantes na praça central, pousadas com restaurante — locais que realmente existem em cidades pequenas brasileiras.
-- Se você não tem certeza se um local existe, NÃO inclua. Prefira listar atrações naturais da região (serras, cachoeiras, rios) que são verificáveis.
-- No campo "avisoConfiabilidade", se a cidade for pequena/pouco turística, inclua: "Cidade de menor porte turístico — recomendamos confirmar os locais antes da viagem."
+REGRAS PARA CIDADES PEQUENAS:
+- Se a cidade for pequena, NÃO invente locais. É MELHOR retornar menos itens com informações reais.
+- Priorize: praças centrais, igrejas históricas, cachoeiras, mirantes, restaurantes conhecidos.
+- Se não tem certeza se um local existe, NÃO inclua.
 
 Retorne JSON com esta estrutura exata:
 {
   "destino": "Nome completo da cidade, Estado/País",
-  "pais": "País onde a cidade está localizada",
+  "pais": "País",
   "estado": "Estado/província (se aplicável)",
-  "resumo": "3-4 frases descritivas sobre o destino, sua história e atrativos principais. Seja preciso e factual.",
+  "resumo": "3-4 frases descritivas sobre o destino.",
   "melhorEpoca": "Período recomendado e motivo.",
-  "clima": "Temperatura média e tipo de clima predominante.",
+  "clima": "Temperatura média e tipo de clima.",
   "diasRecomendados": "X a Y dias",
   "locaisParaVisitar": [
     {
@@ -327,16 +541,16 @@ Retorne JSON com esta estrutura exata:
       "descricao": "Descrição em até 15 palavras",
       "categoria": "monumento | museu | parque | praia | mirante | centro histórico | igreja | cachoeira | praça",
       "avaliacao": 4.7,
-      "palavraChaveImagem": "Nome Oficial do Local (como na Wikipedia)"
+      "palavraChaveImagem": "Nome Oficial do Local (exatamente como na Wikipedia)"
     }
   ],
   "ondeJantar": [
     {
-      "nome": "Nome REAL e COMPLETO do restaurante (que existe de verdade)",
+      "nome": "Nome REAL do restaurante",
       "descricao": "Descrição curta",
       "tipoCozinha": "Tipo de cozinha",
       "faixaPreco": "$$ | $$$ | $$$$",
-      "palavraChaveImagem": "Nome Oficial do Restaurante Cidade"
+      "palavraChaveImagem": "Nome Real do Restaurante Cidade"
     }
   ],
   "experiencias": [
@@ -344,18 +558,18 @@ Retorne JSON com esta estrutura exata:
       "nome": "Nome da experiência",
       "descricao": "Descrição curta",
       "tipo": "aventura | cultural | gastronômica | natureza | passeio",
-      "palavraChaveImagem": "Local Principal da Experiência (como na Wikipedia)"
+      "palavraChaveImagem": "Nome do Local Principal da Experiência"
     }
   ],
-  "dicas": ["Dica prática e útil"],
+  "dicas": ["Dica prática"],
   "avisoConfiabilidade": ""
 }
 
-Quantidades (AJUSTE conforme a cidade):
-- Cidades grandes/turísticas: locaisParaVisitar: 5-6, ondeJantar: 3-4, experiencias: 3-4
-- Cidades pequenas/pouco conhecidas: locaisParaVisitar: 2-4, ondeJantar: 2-3, experiencias: 2-3
+Quantidades:
+- Cidades grandes: locaisParaVisitar: 5-6, ondeJantar: 3-4, experiencias: 3-4
+- Cidades pequenas: locaisParaVisitar: 2-4, ondeJantar: 2-3, experiencias: 2-3
 - dicas: 3 a 5 itens
-- avaliacao deve ser um número entre 3.0 e 5.0 com uma casa decimal`;
+- avaliacao: número entre 3.0 e 5.0 com uma casa decimal`;
 
     const resultado = await chamarGeminiComRetry(genAI, prompt, {
       temperature: 0.5,
@@ -374,11 +588,22 @@ Quantidades (AJUSTE conforme a cidade):
         dados = JSON.parse(limpo);
       } catch {
         console.error('[IA] JSON inválido da Gemini, usando fallback');
-        return res.json(await gerarExploracaoFallback(destinoLimpo));
+        try {
+          return res.json(await gerarExploracaoFallback(destinoLimpo));
+        } catch (fallbackErro) {
+          console.error('[explorarDestino] Fallback falhou (JSON inválido):', fallbackErro.message, fallbackErro.stack);
+          return res.status(500).json({
+            error: {
+              code: 'IA_UNAVAILABLE',
+              message: 'Serviço de exploração temporariamente indisponível. Tente novamente.',
+            },
+          });
+        }
       }
     }
 
     const cidadeNome = dados.destino || destinoLimpo;
+    console.log('[explorarDestino] Gemini respondeu com sucesso, enriquecendo imagens para:', cidadeNome);
 
     const headerImage = await buscarImagemCidade(cidadeNome);
 
@@ -386,6 +611,7 @@ Quantidades (AJUSTE conforme a cidade):
     const jantarComImagem = await buscarImagensParaLista(dados.ondeJantar || [], cidadeNome, 'restaurante', headerImage, locaisComImagem);
     const experienciasComImagem = await buscarImagensParaLista(dados.experiencias || [], cidadeNome, 'local', headerImage, locaisComImagem, jantarComImagem);
 
+    console.log('[explorarDestino] Resposta pronta para:', cidadeNome);
     res.json({
       destino: cidadeNome,
       pais: dados.pais || '',
@@ -401,8 +627,18 @@ Quantidades (AJUSTE conforme a cidade):
       avisoConfiabilidade: dados.avisoConfiabilidade || '',
     });
   } catch (erro) {
-    console.error('[IA] Erro ao explorar destino:', erro.message);
-    res.json(await gerarExploracaoFallback(destinoLimpo));
+    console.error('[explorarDestino] Erro principal:', erro.message, erro.stack);
+    try {
+      res.json(await gerarExploracaoFallback(destinoLimpo));
+    } catch (fallbackErro) {
+      console.error('[explorarDestino] Fallback também falhou:', fallbackErro.message, fallbackErro.stack);
+      res.status(500).json({
+        error: {
+          code: 'IA_UNAVAILABLE',
+          message: 'Não foi possível explorar o destino. Tente novamente mais tarde.',
+        },
+      });
+    }
   }
 };
 
